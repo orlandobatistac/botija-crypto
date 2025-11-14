@@ -301,7 +301,8 @@ botija/
 ├── frontend/
 │   └── index.html                       # Dashboard
 ├── docs/
-│   ├── PAPER_TRADING_GUIDE.md           # Este archivo
+│   ├── PAPER_TRADING_GUIDE.md           # Guía completa de paper trading
+│   ├── PROJECT_STATUS.md                # Este archivo
 │   └── README_PAPERTRADER.md
 ├── .env.example
 ├── README.md
