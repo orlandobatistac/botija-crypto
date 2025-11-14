@@ -206,7 +206,7 @@
                         // Fetch dashboard status (paper or real)
                         const dashResp = await fetch('/api/v1/bot/dashboard');
                         const dashboard = await dashResp.json();
-                        
+
                         this.botStatus = {
                             is_running: dashboard.mode === 'PAPER',
                             btc_balance: dashboard.btc_balance || 0,
