@@ -7,6 +7,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Create FastAPI app
 app = FastAPI(
@@ -27,6 +34,14 @@ app.add_middleware(
 # Mount static files
 if os.path.exists("../frontend/static"):
     app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+
+# Import routers
+from app.routers import bot, trades, indicators
+
+# Include routers
+app.include_router(bot.router)
+app.include_router(trades.router)
+app.include_router(indicators.router)
 
 @app.get("/")
 async def root():
