@@ -203,17 +203,22 @@
 
                 async refreshStatus() {
                     try {
-                        const response = await fetch('/api/v1/status');
-                        const data = await response.json();
-                        this.status = data.status;
+                        // Fetch dashboard status (paper or real)
+                        const dashResp = await fetch('/api/v1/bot/dashboard');
+                        const dashboard = await dashResp.json();
+                        
+                        this.botStatus = {
+                            is_running: dashboard.mode === 'PAPER',
+                            btc_balance: dashboard.btc_balance || 0,
+                            usd_balance: dashboard.usd_balance || 0
+                        };
 
-                        // Fetch bot status
-                        const botResp = await fetch('/api/v1/bot/status');
-                        this.botStatus = await botResp.json();
-
-                        // Fetch trades
-                        const tradesResp = await fetch('/api/v1/trades/');
-                        this.trades = await tradesResp.json();
+                        // Fetch trades from paper API if in paper mode
+                        if (dashboard.mode === 'PAPER') {
+                            const tradesResp = await fetch('/api/v1/paper/trades');
+                            const tradesData = await tradesResp.json();
+                            this.trades = tradesData.trades || [];
+                        }
 
                         // Fetch signals
                         const signalsResp = await fetch('/api/v1/bot/signals');

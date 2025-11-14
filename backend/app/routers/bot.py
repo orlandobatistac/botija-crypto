@@ -8,6 +8,8 @@ import os
 from .. import models, schemas
 from ..database import get_db
 from ..services import TradingBot, TechnicalIndicators
+from ..services.modes.factory import get_trading_engine
+from ..services.modes.paper import PaperTradingEngine
 
 router = APIRouter(
     prefix="/api/v1/bot",
@@ -40,6 +42,42 @@ async def get_bot_status(db: Session = Depends(get_db)):
     if not status:
         return {"error": "No status found"}
     return status
+
+@router.get("/dashboard")
+async def get_dashboard_status():
+    """Get combined dashboard status (paper + trading bot)"""
+    try:
+        # Get trading engine (paper or real)
+        engine = get_trading_engine()
+        balances = engine.load_balances()
+        
+        # If paper engine, get additional stats
+        if isinstance(engine, PaperTradingEngine):
+            wallet = engine.get_wallet_summary()
+            position = engine.get_open_position()
+            
+            return {
+                "mode": "PAPER",
+                "btc_balance": wallet['btc_balance'],
+                "usd_balance": wallet['usd_balance'],
+                "trailing_stop": wallet.get('trailing_stop'),
+                "position_open": wallet['btc_balance'] > 0,
+                "position_details": position if position else None,
+                "status": "ready"
+            }
+        else:
+            # Real trading engine
+            return {
+                "mode": "REAL",
+                "btc_balance": balances.get('btc', 0),
+                "usd_balance": balances.get('usd', 0),
+                "status": "connected"
+            }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "error"
+        }
 
 @router.post("/status", response_model=schemas.BotStatus)
 async def update_bot_status(status: schemas.BotStatusCreate, db: Session = Depends(get_db)):
