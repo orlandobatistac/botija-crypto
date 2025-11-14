@@ -8,6 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
+from contextlib import asynccontextmanager
+
+# Import scheduler
+from .scheduler import init_scheduler, shutdown_scheduler
 
 # Configure logging
 logging.basicConfig(
@@ -15,11 +19,25 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+logger = logging.getLogger(__name__)
+
+# Lifespan events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    init_scheduler()
+    logger.info("🚀 Kraken AI Trading Bot iniciado")
+    yield
+    # Shutdown
+    shutdown_scheduler()
+    logger.info("🛑 Kraken AI Trading Bot detenido")
+
 # Create FastAPI app
 app = FastAPI(
     title="Kraken AI Trading Bot",
     description="Automated swing trading bot for Bitcoin using Kraken Spot API with AI validation",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -36,12 +54,13 @@ if os.path.exists("../frontend/static"):
     app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
 
 # Import routers
-from app.routers import bot, trades, indicators
+from app.routers import bot, trades, indicators, paper
 
 # Include routers
 app.include_router(bot.router)
 app.include_router(trades.router)
 app.include_router(indicators.router)
+app.include_router(paper.router)
 
 @app.get("/")
 async def root():
