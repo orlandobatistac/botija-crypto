@@ -10,6 +10,7 @@ from ..database import get_db
 from ..services import TradingBot, TechnicalIndicators
 from ..services.modes.factory import get_trading_engine
 from ..services.modes.paper import PaperTradingEngine
+from ..scheduler import get_scheduler_status
 
 router = APIRouter(
     prefix="/api/v1/bot",
@@ -172,3 +173,8 @@ async def get_indicators(pair: str = "XBTUSDT", bot: TradingBot = Depends(get_tr
         return indicators
     except Exception as e:
         return {"error": str(e)}
+
+@router.get("/scheduler/status")
+async def get_scheduler_info():
+    """Get scheduler status and next cycle info"""
+    return get_scheduler_status()

@@ -69,6 +69,40 @@
                 </div>
             </div>
 
+            <!-- Scheduler KPI -->
+            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
+                <h2 class="text-xl font-bold mb-6">Scheduler Status</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Next Cycle Countdown -->
+                    <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                        <div class="text-sm text-gray-400 mb-2">Next Trading Cycle</div>
+                        <div class="text-3xl font-bold text-blue-400" x-text="formatTime(schedulerCountdown)"></div>
+                        <div class="text-xs text-gray-500 mt-2" x-text="schedulerStatus.next_cycle ? 'Scheduled: ' + new Date(schedulerStatus.next_cycle).toLocaleTimeString() : 'Not scheduled'"></div>
+                    </div>
+                    
+                    <!-- Last Cycle -->
+                    <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                        <div class="text-sm text-gray-400 mb-2">Last Cycle</div>
+                        <div class="text-sm font-mono" x-text="schedulerStatus.last_cycle ? new Date(schedulerStatus.last_cycle).toLocaleString() : 'Never'"></div>
+                        <div class="text-xs text-gray-500 mt-2" x-text="schedulerStatus.last_cycle ? timeSinceLastCycle : '-'"></div>
+                    </div>
+
+                    <!-- Last Cycle Result -->
+                    <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                        <div class="text-sm text-gray-400 mb-2">Result</div>
+                        <span :class="schedulerStatus.last_cycle_result?.status === 'success' ? 'bg-green-600' : schedulerStatus.last_cycle_result?.status === 'error' ? 'bg-red-600' : 'bg-yellow-600'" 
+                            class="px-3 py-1 rounded text-sm font-bold inline-block capitalize" 
+                            x-text="schedulerStatus.last_cycle_result?.status || 'pending'"></span>
+                        <div x-show="schedulerStatus.last_cycle_result?.trades_executed > 0" class="text-xs text-gray-400 mt-2">
+                            <span x-text="'Trades: ' + schedulerStatus.last_cycle_result?.trades_executed"></span>
+                        </div>
+                        <div x-show="schedulerStatus.last_cycle_result?.error" class="text-xs text-red-400 mt-2">
+                            <span x-text="schedulerStatus.last_cycle_result?.error"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Control Panel -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
                 <h2 class="text-xl font-bold mb-6">Control Panel</h2>
@@ -203,11 +237,23 @@
                 status: null,
                 countdown: 30,
                 tradingCountdown: 3600,
+                schedulerCountdown: 3600,
                 lastTradingTime: Date.now(),
                 botStatus: { is_running: false, btc_balance: 0, usd_balance: 0 },
                 trades: [],
                 signals: [],
+                schedulerStatus: { running: false, last_cycle: null, next_cycle: null, last_cycle_result: {} },
                 lastUpdate: 'Never',
+
+                get timeSinceLastCycle() {
+                    if (!this.schedulerStatus.last_cycle) return '-';
+                    const lastTime = new Date(this.schedulerStatus.last_cycle).getTime();
+                    const now = Date.now();
+                    const diff = Math.floor((now - lastTime) / 1000);
+                    const mins = Math.floor(diff / 60);
+                    const secs = diff % 60;
+                    return `${mins}m ${secs}s ago`;
+                },
 
                 formatTime(seconds) {
                     const mins = Math.floor(seconds / 60);
@@ -236,6 +282,15 @@
                             this.tradingCountdown = 3600; // Reset to 1 hour
                         }
                     }, 1000);
+                    // Scheduler countdown (every second)
+                    setInterval(() => {
+                        if (this.schedulerStatus.next_cycle) {
+                            const nextTime = new Date(this.schedulerStatus.next_cycle).getTime();
+                            const now = Date.now();
+                            const diff = Math.floor((nextTime - now) / 1000);
+                            this.schedulerCountdown = diff > 0 ? diff : 0;
+                        }
+                    }, 1000);
                 },
 
                 async refreshStatus() {
@@ -260,6 +315,10 @@
                         // Fetch signals
                         const signalsResp = await fetch('/api/v1/bot/signals');
                         this.signals = await signalsResp.json();
+
+                        // Fetch scheduler status
+                        const schedulerResp = await fetch('/api/v1/bot/scheduler/status');
+                        this.schedulerStatus = await schedulerResp.json();
 
                         this.lastUpdate = new Date().toLocaleTimeString();
                         this.loading = false;
