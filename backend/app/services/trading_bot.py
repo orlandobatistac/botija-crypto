@@ -185,18 +185,34 @@ class TradingBot:
     async def run_cycle(self) -> Dict:
         """Execute one trading cycle"""
         try:
+            logger.info("📊 Analizando mercado...")
             analysis = await self.analyze_market()
             
             if not analysis:
+                logger.warning("⚠️  Análisis falló - sin datos")
                 return {'success': False, 'reason': 'Analysis failed'}
+            
+            # Log market data
+            logger.info(f"💰 Precio actual: ${analysis.get('current_price', 0):.2f}")
+            logger.info(f"📈 BTC: {analysis.get('btc_balance', 0):.8f} | USD: ${analysis.get('usd_balance', 0):.2f}")
+            
+            tech = analysis.get('tech_signals', {})
+            if tech:
+                logger.info(f"📉 Indicadores - EMA20: {tech.get('ema20', 0):.2f} | EMA50: {tech.get('ema50', 0):.2f} | RSI: {tech.get('rsi14', 0):.2f}")
+            
+            ai_sig = analysis.get('ai_signal', {})
+            if ai_sig:
+                logger.info(f"🤖 Señal AI: {ai_sig.get('signal', 'N/A')} (confianza: {ai_sig.get('confidence', 0):.2f}%)")
             
             # Check trailing stop if position open
             if self.active_trade:
                 ts = self.active_trade['trailing_stop']
                 stop_info = ts.update(analysis['current_price'])
                 
+                logger.info(f"🎯 Trailing stop: ${stop_info['trailing_stop']:.2f} (distancia: {stop_info['distance_to_stop']:.2%})")
+                
                 if stop_info['should_sell']:
-                    self.logger.info("Trailing stop triggered")
+                    logger.info("🛑 Trailing stop triggered - ejecutando venta")
                     analysis['analysis_type'] = 'trailing'
                     await self.execute_sell(analysis)
                 elif stop_info['distance_to_stop'] < stop_info['stop_percentage'] * 0.1:
@@ -208,18 +224,23 @@ class TradingBot:
             
             # Check for buy signal
             if analysis['should_buy']:
+                logger.info("✅ Señal de COMPRA detectada")
                 await self.execute_buy(analysis)
             
             # Check for sell signal
             elif analysis['should_sell']:
+                logger.info("✅ Señal de VENTA detectada")
                 analysis['analysis_type'] = 'signal'
                 await self.execute_sell(analysis)
+            else:
+                logger.info("⏸️  Sin señales de trading - modo espera")
             
             return {'success': True, 'analysis': analysis}
         
         except Exception as e:
-            self.logger.error(f"Error in trading cycle: {e}")
-            self.telegram.send_error_alert(str(e), 'HIGH')
+            logger.error(f"❌ Error en ciclo de trading: {e}")
+            if self.telegram:
+                self.telegram.send_error_alert(str(e), 'HIGH')
             return {'success': False, 'error': str(e)}
     
     async def start(self):
