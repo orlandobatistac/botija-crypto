@@ -19,13 +19,28 @@ jobs:
           timeout: 30m
           command_timeout: 10m
           script: |
-            cd /root/botija
+            set -e
+            echo "🚀 Starting deployment..."
+            
+            cd /root/botija || exit 1
+            echo "📦 Pulling latest code..."
             git pull origin main
+            
+            echo "📦 Installing dependencies..."
             source venv_botija/bin/activate
             cd backend
             pip install -r requirements.txt --quiet
+            
+            echo "🔄 Restarting bot service..."
             cd ..
             systemctl restart botija
-            sleep 2
-            systemctl status botija
-            echo "✅ Deployment successful"
+            sleep 3
+            
+            echo "✅ Verifying service..."
+            if systemctl is-active --quiet botija; then
+              echo "✅ Deployment successful - botija service is running"
+            else
+              echo "❌ Deployment failed - botija service is not running"
+              systemctl status botija
+              exit 1
+            fi
