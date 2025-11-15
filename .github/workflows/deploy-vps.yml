@@ -1,0 +1,31 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - scaffold/init
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: 74.208.146.203
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          timeout: 30m
+          command_timeout: 10m
+          script: |
+            cd /root/botija
+            git pull origin scaffold/init
+            source venv_botija/bin/activate
+            cd backend
+            pip install -r requirements.txt --quiet
+            cd ..
+            systemctl restart botija
+            sleep 2
+            systemctl status botija
+            echo "✅ Deployment successful"

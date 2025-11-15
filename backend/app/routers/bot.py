@@ -4,13 +4,36 @@ Bot router for Kraken AI Trading Bot
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+import os
 from .. import models, schemas
 from ..database import get_db
+from ..services import TradingBot, TechnicalIndicators
+from ..services.modes.factory import get_trading_engine
+from ..services.modes.paper import PaperTradingEngine
 
 router = APIRouter(
     prefix="/api/v1/bot",
     tags=["bot"]
 )
+
+# Initialize trading bot instance
+trading_bot = None
+
+def get_trading_bot() -> TradingBot:
+    """Get or create trading bot instance"""
+    global trading_bot
+    if trading_bot is None:
+        trading_bot = TradingBot(
+            kraken_api_key=os.getenv('KRAKEN_API_KEY', ''),
+            kraken_secret=os.getenv('KRAKEN_SECRET_KEY', ''),
+            openai_api_key=os.getenv('OPENAI_API_KEY', ''),
+            telegram_token=os.getenv('TELEGRAM_TOKEN', ''),
+            telegram_chat_id=os.getenv('TELEGRAM_CHAT_ID', ''),
+            trade_amount=float(os.getenv('TRADE_AMOUNT_USD', 100)),
+            min_balance=float(os.getenv('MIN_BALANCE_USD', 65)),
+            trailing_stop_pct=float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99))
+        )
+    return trading_bot
 
 @router.get("/status", response_model=schemas.BotStatus)
 async def get_bot_status(db: Session = Depends(get_db)):
@@ -19,6 +42,42 @@ async def get_bot_status(db: Session = Depends(get_db)):
     if not status:
         return {"error": "No status found"}
     return status
+
+@router.get("/dashboard")
+async def get_dashboard_status():
+    """Get combined dashboard status (paper + trading bot)"""
+    try:
+        # Get trading engine (paper or real)
+        engine = get_trading_engine()
+        balances = engine.load_balances()
+        
+        # If paper engine, get additional stats
+        if isinstance(engine, PaperTradingEngine):
+            wallet = engine.get_wallet_summary()
+            position = engine.get_open_position()
+            
+            return {
+                "mode": "PAPER",
+                "btc_balance": wallet['btc_balance'],
+                "usd_balance": wallet['usd_balance'],
+                "trailing_stop": wallet.get('trailing_stop'),
+                "position_open": wallet['btc_balance'] > 0,
+                "position_details": position if position else None,
+                "status": "ready"
+            }
+        else:
+            # Real trading engine
+            return {
+                "mode": "REAL",
+                "btc_balance": balances.get('btc', 0),
+                "usd_balance": balances.get('usd', 0),
+                "status": "connected"
+            }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "error"
+        }
 
 @router.post("/status", response_model=schemas.BotStatus)
 async def update_bot_status(status: schemas.BotStatusCreate, db: Session = Depends(get_db)):
@@ -34,3 +93,82 @@ async def get_recent_signals(limit: int = 10, db: Session = Depends(get_db)):
     """Get recent trading signals"""
     signals = db.query(models.Signal).order_by(models.Signal.timestamp.desc()).limit(limit).all()
     return signals
+
+@router.post("/signals", response_model=schemas.Signal)
+async def create_signal(signal: schemas.SignalCreate, db: Session = Depends(get_db)):
+    """Create a new trading signal record"""
+    db_signal = models.Signal(**signal.dict())
+    db.add(db_signal)
+    db.commit()
+    db.refresh(db_signal)
+    return db_signal
+
+@router.post("/start")
+async def start_bot(bot: TradingBot = Depends(get_trading_bot)):
+    """Start the trading bot"""
+    await bot.start()
+    return {"message": "Bot started", "status": "running"}
+
+@router.post("/stop")
+async def stop_bot(bot: TradingBot = Depends(get_trading_bot)):
+    """Stop the trading bot"""
+    await bot.stop()
+    return {"message": "Bot stopped", "status": "stopped"}
+
+@router.post("/cycle")
+async def run_trading_cycle(
+    db: Session = Depends(get_db),
+    bot: TradingBot = Depends(get_trading_bot)
+):
+    """Execute one trading cycle"""
+    result = await bot.run_cycle()
+    
+    if result.get('success') and 'analysis' in result:
+        analysis = result['analysis']
+        
+        # Store signal in database
+        signal_data = schemas.SignalCreate(
+            ema20=analysis['tech_signals'].get('ema20', 0),
+            ema50=analysis['tech_signals'].get('ema50', 0),
+            rsi14=analysis['tech_signals'].get('rsi14', 0),
+            ai_signal=analysis['ai_signal']['signal'],
+            confidence=analysis['ai_signal']['confidence']
+        )
+        
+        db_signal = models.Signal(**signal_data.dict())
+        db.add(db_signal)
+        
+        # Update bot status
+        status_data = schemas.BotStatusCreate(
+            is_running=bot.is_running,
+            btc_balance=analysis['btc_balance'],
+            usd_balance=analysis['usd_balance']
+        )
+        
+        db_status = models.BotStatus(**status_data.dict())
+        db.add(db_status)
+        
+        db.commit()
+    
+    return result
+
+@router.get("/analysis")
+async def get_market_analysis(bot: TradingBot = Depends(get_trading_bot)):
+    """Get current market analysis without trading"""
+    analysis = await bot.analyze_market()
+    return analysis if analysis else {"error": "Analysis failed"}
+
+@router.get("/indicators/{pair}")
+async def get_indicators(pair: str = "XBTUSDT", bot: TradingBot = Depends(get_trading_bot)):
+    """Get technical indicators for a pair"""
+    try:
+        ohlc_data = bot.kraken.get_ohlc(pair)
+        if not ohlc_data:
+            return {"error": "No OHLC data available"}
+        
+        closes = [float(candle[4]) for candle in ohlc_data]
+        indicators = TechnicalIndicators.analyze_signals(closes)
+        
+        return indicators
+    except Exception as e:
+        return {"error": str(e)}
