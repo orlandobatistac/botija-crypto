@@ -145,20 +145,20 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="trade in trades" :key="trade.id">
+                            <template x-for="(trade, index) in trades" :key="index">
                                 <tr class="border-b border-gray-700 hover:bg-gray-700/50">
                                     <td class="py-3 px-4">
                                         <span :class="trade.order_type === 'BUY' ? 'text-green-400' : 'text-red-400'"
                                             x-text="trade.order_type"></span>
                                     </td>
-                                    <td class="py-3 px-4" x-text="'$' + trade.entry_price.toFixed(2)"></td>
-                                    <td class="py-3 px-4" x-text="trade.quantity.toFixed(8)"></td>
+                                    <td class="py-3 px-4" x-text="'$' + parseFloat(trade.entry_price).toFixed(2)"></td>
+                                    <td class="py-3 px-4" x-text="parseFloat(trade.quantity).toFixed(8)"></td>
                                     <td class="py-3 px-4" x-text="trade.status"></td>
                                     <td class="py-3 px-4"
-                                        :class="trade.profit_loss >= 0 ? 'text-green-400' : 'text-red-400'"
-                                        x-text="trade.profit_loss ? '$' + trade.profit_loss.toFixed(2) : '-'"></td>
+                                        :class="parseFloat(trade.profit_loss || 0) >= 0 ? 'text-green-400' : 'text-red-400'"
+                                        x-text="trade.profit_loss ? '$' + parseFloat(trade.profit_loss).toFixed(2) : '-'"></td>
                                     <td class="py-3 px-4 text-gray-500 text-xs"
-                                        x-text="new Date(trade.created_at).toLocaleDateString()"></td>
+                                        x-text="trade.created_at ? new Date(trade.created_at).toLocaleDateString() : '-'"></td>
                                 </tr>
                             </template>
                         </tbody>
