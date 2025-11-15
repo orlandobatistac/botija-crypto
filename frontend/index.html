@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kraken AI Trading Bot</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>⚡</text></svg>" type="image/svg+xml">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>⚡</text></svg>"
+        type="image/svg+xml">
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/components.css">
@@ -27,7 +29,7 @@
                     </div>
                     <div x-show="loading" class="text-blue-400 text-sm">Loading...</div>
                     <div class="text-xs text-gray-500">
-                        Next check in: <span x-text="countdown"></span>s
+                        Next trading cycle in: <span x-text="formatTime(tradingCountdown)"></span>
                     </div>
                 </div>
             </div>
@@ -132,10 +134,11 @@
                     <h2 class="text-xl font-bold">Recent Signals</h2>
                     <div x-show="signals.length > 0" class="flex items-center gap-2">
                         <span class="text-sm text-gray-400">Latest:</span>
-                        <span :class="signals[0]?.ai_signal === 'BUY' ? 'bg-green-600' : signals[0]?.ai_signal === 'SELL' ? 'bg-red-600' : 'bg-yellow-600'"
-                            class="px-2 py-1 rounded text-xs font-bold"
-                            x-text="signals[0]?.ai_signal || '-'"></span>
-                        <span class="text-xs text-gray-500" x-text="signals[0]?.timestamp ? new Date(signals[0].timestamp).toLocaleTimeString() : ''"></span>
+                        <span
+                            :class="signals[0]?.ai_signal === 'BUY' ? 'bg-green-600' : signals[0]?.ai_signal === 'SELL' ? 'bg-red-600' : 'bg-yellow-600'"
+                            class="px-2 py-1 rounded text-xs font-bold" x-text="signals[0]?.ai_signal || '-'"></span>
+                        <span class="text-xs text-gray-500"
+                            x-text="signals[0]?.timestamp ? new Date(signals[0].timestamp).toLocaleTimeString() : ''"></span>
                     </div>
                 </div>
                 <div x-show="signals.length > 0" class="space-y-4">
@@ -199,10 +202,18 @@
                 loading: true,
                 status: null,
                 countdown: 30,
+                tradingCountdown: 3600,
+                lastTradingTime: Date.now(),
                 botStatus: { is_running: false, btc_balance: 0, usd_balance: 0 },
                 trades: [],
                 signals: [],
                 lastUpdate: 'Never',
+
+                formatTime(seconds) {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    return `${mins}m ${secs}s`;
+                },
 
                 get totalPortfolio() {
                     // Assuming BTC price needs to be fetched
@@ -216,6 +227,13 @@
                         this.countdown--;
                         if (this.countdown <= 0) {
                             this.countdown = 30;
+                        }
+                    }, 1000);
+                    // Trading cycle countdown (every second)
+                    setInterval(() => {
+                        this.tradingCountdown--;
+                        if (this.tradingCountdown <= 0) {
+                            this.tradingCountdown = 3600; // Reset to 1 hour
                         }
                     }, 1000);
                 },
