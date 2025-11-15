@@ -61,6 +61,9 @@ http://localhost:8001 (frontend)
 - `manifest.json` - Project metadata
 
 ## Developer Preferences
+- **NO documentation files**: Respuestas resumidas EN CHAT SOLAMENTE
+- No crear guías, tutoriales, ni markdown files de documentation
+- Mantener el proyecto limpio (solo código funcional)
 - Prefers SHORT responses
 - Values working solutions first
 - Likes clean, maintainable code
