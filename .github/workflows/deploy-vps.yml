@@ -39,6 +39,8 @@ jobs:
             
             # Deploy
             cd /root/botija || exit 1
+            echo "📦 Resetting local changes..."
+            git reset --hard origin/main
             echo "📦 Pulling latest code..."
             git pull origin main
             
