@@ -80,8 +80,31 @@ def shutdown_scheduler():
 
 def get_scheduler_status():
     """Retorna el estado actual del scheduler"""
-    return {
+    from datetime import datetime, timedelta
+    
+    status = {
         "running": scheduler.running,
         "jobs": len(scheduler.get_jobs()) if scheduler.running else 0
     }
+    
+    if scheduler.running:
+        jobs = scheduler.get_jobs()
+        if jobs:
+            job = jobs[0]
+            next_run = job.next_run_time
+            if next_run:
+                now = datetime.now(next_run.tzinfo) if next_run.tzinfo else datetime.now()
+                time_until = next_run - now
+                seconds = int(time_until.total_seconds())
+                
+                minutes = seconds // 60
+                secs = seconds % 60
+                
+                status["next_cycle"] = f"{minutes}m {secs}s"
+                status["next_run_time"] = next_run.isoformat()
+                status["last_result"] = "pending"
+            else:
+                status["next_cycle"] = "unknown"
+    
+    return status
 
