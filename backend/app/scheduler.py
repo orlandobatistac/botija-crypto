@@ -23,19 +23,27 @@ def init_scheduler():
     try:
         config = Config()
         
-        # Obtener credenciales Kraken
+        # Obtener credenciales y parámetros
         kraken_key = os.getenv('KRAKEN_API_KEY', '')
         kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '')
+        openai_key = os.getenv('OPENAI_API_KEY', '')
+        telegram_token = os.getenv('TELEGRAM_TOKEN', '')
+        telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID', '')
         
-        # Inicializar bot (con o sin credenciales)
-        if kraken_key and kraken_secret:
-            kraken_client = KrakenClient(kraken_key, kraken_secret)
-            trading_bot = TradingBot(kraken_client)
-            logger.info("✅ Bot inicializado con credenciales Kraken (REAL TRADING)")
-        else:
-            # Paper trading mode (sin credenciales)
-            trading_bot = TradingBot(None)
-            logger.info("✅ Bot inicializado en modo PAPER TRADING (sin credenciales Kraken)")
+        # Inicializar bot con todos los parámetros
+        trading_bot = TradingBot(
+            kraken_api_key=kraken_key,
+            kraken_secret=kraken_secret,
+            openai_api_key=openai_key,
+            telegram_token=telegram_token,
+            telegram_chat_id=telegram_chat_id,
+            trade_amount=config.TRADE_AMOUNT_USD,
+            min_balance=config.MIN_BALANCE_USD,
+            trailing_stop_pct=config.TRAILING_STOP_PERCENTAGE
+        )
+        
+        mode = "REAL TRADING" if (kraken_key and kraken_secret) else "PAPER TRADING"
+        logger.info(f"✅ Bot inicializado en modo {mode}")
         
         # Agregar job para ejecutar ciclo cada hora (3600 segundos por defecto)
         scheduler.add_job(
@@ -51,6 +59,7 @@ def init_scheduler():
         
     except Exception as e:
         logger.warning(f"⚠️  Scheduler deshabilitado: {e}")
+
 
 def run_trading_cycle():
     """Ejecuta un ciclo completo de trading"""
