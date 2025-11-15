@@ -18,7 +18,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# Import models to register them with Base
+from . import models  # noqa: F401, E402
+
 def get_db():
+    """Get database session"""
     db = SessionLocal()
     try:
         yield db
