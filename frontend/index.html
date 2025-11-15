@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -22,9 +22,9 @@
                 <div class="flex items-center gap-6">
                     <div x-show="!loading && status" class="flex items-center gap-2">
                         <span class="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                        <span class="text-sm text-green-400">Conectado</span>
+                        <span class="text-sm text-green-400">Connected</span>
                     </div>
-                    <div x-show="loading" class="text-blue-400 text-sm">Cargando...</div>
+                    <div x-show="loading" class="text-blue-400 text-sm">Loading...</div>
                 </div>
             </div>
         </nav>
@@ -35,66 +35,66 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <!-- Bot Status -->
                 <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">Estado del Bot</div>
+                    <div class="text-sm text-gray-400 mb-2">Bot Status</div>
                     <div class="text-3xl font-bold text-green-400"
-                        x-text="botStatus.is_running ? 'ACTIVO' : 'INACTIVO'"></div>
-                    <div class="text-xs text-gray-500 mt-2">Última verificación: <span x-text="lastUpdate"></span></div>
+                        x-text="botStatus.is_running ? 'ACTIVE' : 'INACTIVE'"></div>
+                    <div class="text-xs text-gray-500 mt-2">Last check: <span x-text="lastUpdate"></span></div>
                 </div>
 
                 <!-- BTC Balance -->
                 <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">Balance BTC</div>
+                    <div class="text-sm text-gray-400 mb-2">BTC Balance</div>
                     <div class="text-3xl font-bold text-orange-400" x-text="botStatus.btc_balance.toFixed(8)"></div>
-                    <div class="text-xs text-gray-500 mt-2">Cantidad actual</div>
+                    <div class="text-xs text-gray-500 mt-2">Current amount</div>
                 </div>
 
                 <!-- USD Balance -->
                 <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">Balance USD</div>
+                    <div class="text-sm text-gray-400 mb-2">USD Balance</div>
                     <div class="text-3xl font-bold text-blue-400" x-text="'$' + botStatus.usd_balance.toFixed(2)"></div>
-                    <div class="text-xs text-gray-500 mt-2">Disponible para trading</div>
+                    <div class="text-xs text-gray-500 mt-2">Available for trading</div>
                 </div>
 
                 <!-- Total Portfolio -->
                 <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">Cartera Total</div>
+                    <div class="text-sm text-gray-400 mb-2">Total Portfolio</div>
                     <div class="text-3xl font-bold text-purple-400" x-text="'$' + totalPortfolio.toFixed(2)"></div>
-                    <div class="text-xs text-gray-500 mt-2">USD equivalente</div>
+                    <div class="text-xs text-gray-500 mt-2">USD equivalent</div>
                 </div>
             </div>
 
             <!-- Control Panel -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
-                <h2 class="text-xl font-bold mb-6">Panel de Control</h2>
+                <h2 class="text-xl font-bold mb-6">Control Panel</h2>
                 <div class="flex gap-4">
                     <button @click="startBot()"
                         class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition">
-                        ▶ Iniciar Bot
+                        ▶ Start Bot
                     </button>
                     <button @click="stopBot()"
                         class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition">
-                        ⏹ Detener Bot
+                        ⏹ Stop Bot
                     </button>
                     <button @click="refreshStatus()"
                         class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
-                        🔄 Actualizar
+                        🔄 Refresh
                     </button>
                 </div>
             </div>
 
             <!-- Recent Trades -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
-                <h2 class="text-xl font-bold mb-6">Operaciones Recientes</h2>
+                <h2 class="text-xl font-bold mb-6">Recent Trades</h2>
                 <div x-show="trades.length > 0" class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="border-b border-gray-700">
                             <tr class="text-gray-400">
-                                <th class="text-left py-3 px-4">Tipo</th>
-                                <th class="text-left py-3 px-4">Precio</th>
-                                <th class="text-left py-3 px-4">Cantidad</th>
-                                <th class="text-left py-3 px-4">Estado</th>
+                                <th class="text-left py-3 px-4">Type</th>
+                                <th class="text-left py-3 px-4">Price</th>
+                                <th class="text-left py-3 px-4">Amount</th>
+                                <th class="text-left py-3 px-4">Status</th>
                                 <th class="text-left py-3 px-4">P/L</th>
-                                <th class="text-left py-3 px-4">Fecha</th>
+                                <th class="text-left py-3 px-4">Date</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -118,13 +118,13 @@
                     </table>
                 </div>
                 <div x-show="trades.length === 0" class="text-gray-500 text-center py-8">
-                    No hay operaciones registradas
+                    No trades recorded yet
                 </div>
             </div>
 
             <!-- Recent Signals -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 class="text-xl font-bold mb-6">Señales Recientes</h2>
+                <h2 class="text-xl font-bold mb-6">Recent Signals</h2>
                 <div x-show="signals.length > 0" class="space-y-4">
                     <template x-for="signal in signals" :key="signal.id">
                         <div class="border border-gray-700 rounded p-4 bg-gray-700/30">
@@ -152,7 +152,7 @@
                                 </div>
                             </div>
                             <div class="mt-3 pt-3 border-t border-gray-600">
-                                <span class="text-gray-400 text-sm">Confianza:</span>
+                                <span class="text-gray-400 text-sm">Confidence:</span>
                                 <div class="w-full bg-gray-600 rounded-full h-2 mt-1">
                                     <div class="bg-green-500 h-2 rounded-full transition-all"
                                         :style="'width: ' + (signal.confidence * 100) + '%'"></div>
@@ -162,7 +162,7 @@
                     </template>
                 </div>
                 <div x-show="signals.length === 0" class="text-gray-500 text-center py-8">
-                    No hay señales registradas
+                    No signals recorded yet
                 </div>
             </div>
         </main>
@@ -170,7 +170,7 @@
         <!-- Footer -->
         <footer class="border-t border-gray-700 bg-gray-950 mt-8">
             <div class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-                Kraken AI Trading Bot v1.0.0 | Última actualización: <span
+                Kraken AI Trading Bot v1.0.0 | Last update: <span
                     x-text="new Date().toLocaleTimeString()"></span>
             </div>
         </footer>
@@ -189,7 +189,7 @@
                 botStatus: { is_running: false, btc_balance: 0, usd_balance: 0 },
                 trades: [],
                 signals: [],
-                lastUpdate: 'Nunca',
+                lastUpdate: 'Never',
 
                 get totalPortfolio() {
                     // Assuming BTC price needs to be fetched
