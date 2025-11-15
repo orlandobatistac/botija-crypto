@@ -68,3 +68,11 @@ def shutdown_scheduler():
     if scheduler.running:
         scheduler.shutdown()
         logger.info("✅ Scheduler detenido")
+
+def get_scheduler_status():
+    """Retorna el estado actual del scheduler"""
+    return {
+        "running": scheduler.running,
+        "jobs": len(scheduler.get_jobs()) if scheduler.running else 0
+    }
+

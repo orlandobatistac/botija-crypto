@@ -50,8 +50,11 @@ app.add_middleware(
 )
 
 # Mount static files
-if os.path.exists("../frontend/static"):
-    app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+frontend_static = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "static")
+if os.path.exists(frontend_static):
+    app.mount("/static", StaticFiles(directory=frontend_static), name="static")
+else:
+    logger.warning(f"Static files directory not found at {frontend_static}")
 
 # Import routers
 from app.routers import bot, trades, indicators, paper
