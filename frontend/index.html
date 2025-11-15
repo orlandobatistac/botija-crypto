@@ -325,6 +325,14 @@
                         const schedulerResp = await fetch('/api/v1/bot/scheduler/status');
                         this.schedulerStatus = await schedulerResp.json();
 
+                        // Update countdown based on next_run_time from scheduler
+                        if (this.schedulerStatus.next_run_time) {
+                            const nextTime = new Date(this.schedulerStatus.next_run_time).getTime();
+                            const now = Date.now();
+                            const diff = Math.floor((nextTime - now) / 1000);
+                            this.schedulerCountdown = diff > 0 ? diff : 0;
+                        }
+
                         this.lastUpdate = new Date().toLocaleTimeString();
                         this.loading = false;
                         this.countdown = 30; // Reset countdown
