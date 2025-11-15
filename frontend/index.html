@@ -26,6 +26,9 @@
                         <span class="text-sm text-green-400">Connected</span>
                     </div>
                     <div x-show="loading" class="text-blue-400 text-sm">Loading...</div>
+                    <div class="text-xs text-gray-500">
+                        Next check in: <span x-text="countdown"></span>s
+                    </div>
                 </div>
             </div>
         </nav>
@@ -125,7 +128,16 @@
 
             <!-- Recent Signals -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 class="text-xl font-bold mb-6">Recent Signals</h2>
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold">Recent Signals</h2>
+                    <div x-show="signals.length > 0" class="flex items-center gap-2">
+                        <span class="text-sm text-gray-400">Latest:</span>
+                        <span :class="signals[0]?.ai_signal === 'BUY' ? 'bg-green-600' : signals[0]?.ai_signal === 'SELL' ? 'bg-red-600' : 'bg-yellow-600'"
+                            class="px-2 py-1 rounded text-xs font-bold"
+                            x-text="signals[0]?.ai_signal || '-'"></span>
+                        <span class="text-xs text-gray-500" x-text="signals[0]?.timestamp ? new Date(signals[0].timestamp).toLocaleTimeString() : ''"></span>
+                    </div>
+                </div>
                 <div x-show="signals.length > 0" class="space-y-4">
                     <template x-for="signal in signals" :key="signal.id">
                         <div class="border border-gray-700 rounded p-4 bg-gray-700/30">
@@ -186,6 +198,7 @@
             return {
                 loading: true,
                 status: null,
+                countdown: 30,
                 botStatus: { is_running: false, btc_balance: 0, usd_balance: 0 },
                 trades: [],
                 signals: [],
@@ -199,6 +212,12 @@
                 async init() {
                     this.refreshStatus();
                     setInterval(() => this.refreshStatus(), 30000); // Refresh every 30 seconds
+                    setInterval(() => {
+                        this.countdown--;
+                        if (this.countdown <= 0) {
+                            this.countdown = 30;
+                        }
+                    }, 1000);
                 },
 
                 async refreshStatus() {
@@ -226,6 +245,7 @@
 
                         this.lastUpdate = new Date().toLocaleTimeString();
                         this.loading = false;
+                        this.countdown = 30; // Reset countdown
                     } catch (err) {
                         console.error('Error refreshing status:', err);
                         this.loading = false;
