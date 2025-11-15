@@ -84,7 +84,11 @@ def get_scheduler_status():
     
     status = {
         "running": scheduler.running,
-        "jobs": len(scheduler.get_jobs()) if scheduler.running else 0
+        "jobs": len(scheduler.get_jobs()) if scheduler.running else 0,
+        "next_cycle": None,
+        "next_run_time": None,
+        "seconds_until_next": None,
+        "last_result": "pending"
     }
     
     if scheduler.running:
@@ -97,14 +101,8 @@ def get_scheduler_status():
                 time_until = next_run - now
                 seconds = int(time_until.total_seconds())
                 
-                minutes = seconds // 60
-                secs = seconds % 60
-                
-                status["next_cycle"] = f"{minutes}m {secs}s"
                 status["next_run_time"] = next_run.isoformat()
-                status["last_result"] = "pending"
-            else:
-                status["next_cycle"] = "unknown"
+                status["seconds_until_next"] = max(0, seconds)  # Never negative
     
     return status
 
