@@ -23,16 +23,19 @@ def init_scheduler():
     try:
         config = Config()
         
-        # Solo inicializar si tenemos credenciales
+        # Obtener credenciales Kraken
         kraken_key = os.getenv('KRAKEN_API_KEY', '')
         kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '')
         
-        if not kraken_key or not kraken_secret:
-            logger.warning("⚠️  Scheduler pausado: Sin credenciales de Kraken (usar paper trading)")
-            return
-        
-        kraken_client = KrakenClient(kraken_key, kraken_secret)
-        trading_bot = TradingBot(kraken_client)
+        # Inicializar bot (con o sin credenciales)
+        if kraken_key and kraken_secret:
+            kraken_client = KrakenClient(kraken_key, kraken_secret)
+            trading_bot = TradingBot(kraken_client)
+            logger.info("✅ Bot inicializado con credenciales Kraken (REAL TRADING)")
+        else:
+            # Paper trading mode (sin credenciales)
+            trading_bot = TradingBot(None)
+            logger.info("✅ Bot inicializado en modo PAPER TRADING (sin credenciales Kraken)")
         
         # Agregar job para ejecutar ciclo cada hora (3600 segundos por defecto)
         scheduler.add_job(

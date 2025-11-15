@@ -3,7 +3,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - scaffold/init
+      - main
 
 jobs:
   deploy:
@@ -20,7 +20,7 @@ jobs:
           command_timeout: 10m
           script: |
             cd /root/botija
-            git pull origin scaffold/init
+            git pull origin main
             source venv_botija/bin/activate
             cd backend
             pip install -r requirements.txt --quiet
