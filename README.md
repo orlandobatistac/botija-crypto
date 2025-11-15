@@ -244,3 +244,4 @@ Full workflow: indicators → AI → evaluate → buy/sell → trailing → aler
 - Trailing stop protection
 
 # Deployment test
+# GitHub Actions deployment test
