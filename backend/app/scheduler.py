@@ -3,10 +3,11 @@ Scheduler para ejecutar ciclos de trading automáticamente
 """
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 import logging
 import asyncio
 import os
+from datetime import datetime
 from .services.trading_bot import TradingBot
 from .services.kraken_client import KrakenClient
 from .config import Config
@@ -45,17 +46,17 @@ def init_scheduler():
         mode = "REAL TRADING" if (kraken_key and kraken_secret) else "PAPER TRADING"
         logger.info(f"✅ Bot inicializado en modo {mode}")
         
-        # Agregar job para ejecutar ciclo cada hora (3600 segundos por defecto)
+        # Ejecutar ciclo cada hora en punto (00:00, 01:00, 02:00, etc.)
         scheduler.add_job(
             run_trading_cycle,
-            IntervalTrigger(seconds=config.TRADING_INTERVAL),
+            CronTrigger(minute=0),  # Ejecuta al minuto 0 de cada hora
             id='trading_cycle',
-            name='Ejecutar ciclo de trading',
+            name='Trading cycle - hourly on the hour',
             replace_existing=True
         )
         
         scheduler.start()
-        logger.info(f"✅ Scheduler iniciado - Ciclo de trading cada {config.TRADING_INTERVAL}s")
+        logger.info(f"✅ Scheduler iniciado - Ciclo de trading cada hora en punto (XX:00)")
         
     except Exception as e:
         logger.warning(f"⚠️  Scheduler deshabilitado: {e}")
@@ -64,11 +65,15 @@ def init_scheduler():
 def run_trading_cycle():
     """Ejecuta un ciclo completo de trading"""
     try:
+        now = datetime.now()
+        logger.info(f"🔄 Iniciando ciclo de trading - {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        
         # Ejecutar en loop asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(trading_bot.run_cycle())
-        logger.info("✅ Ciclo de trading completado")
+        
+        logger.info(f"✅ Ciclo de trading completado - {datetime.now().strftime('%H:%M:%S')}")
     except Exception as e:
         logger.error(f"❌ Error en ciclo de trading: {e}")
 
