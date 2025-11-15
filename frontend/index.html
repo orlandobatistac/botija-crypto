@@ -78,7 +78,7 @@
                         <div class="text-sm text-gray-400 mb-2">Next Trading Cycle</div>
                         <div class="text-3xl font-bold text-blue-400" x-text="formatTime(schedulerCountdown)"></div>
                         <div class="text-xs text-gray-500 mt-2"
-                            x-text="schedulerStatus.next_cycle ? 'Scheduled: ' + new Date(schedulerStatus.next_cycle).toLocaleTimeString() : 'Not scheduled'">
+                            x-text="schedulerStatus.next_run_time ? 'Scheduled: ' + new Date(schedulerStatus.next_run_time).toLocaleTimeString() : 'Not scheduled'">
                         </div>
                     </div>
 
@@ -289,8 +289,8 @@
                     }, 1000);
                     // Scheduler countdown (every second)
                     setInterval(() => {
-                        if (this.schedulerStatus.next_cycle) {
-                            const nextTime = new Date(this.schedulerStatus.next_cycle).getTime();
+                        if (this.schedulerStatus.next_run_time) {
+                            const nextTime = new Date(this.schedulerStatus.next_run_time).getTime();
                             const now = Date.now();
                             const diff = Math.floor((nextTime - now) / 1000);
                             this.schedulerCountdown = diff > 0 ? diff : 0;
