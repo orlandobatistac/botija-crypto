@@ -243,3 +243,4 @@ Full workflow: indicators → AI → evaluate → buy/sell → trailing → aler
 - Caps per trade  
 - Trailing stop protection
 
+# Deployment test
