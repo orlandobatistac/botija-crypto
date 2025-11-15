@@ -14,7 +14,8 @@ class KrakenClient:
     def __init__(self, api_key: str, api_secret: str):
         """Initialize Kraken API client"""
         self.api = krakenex.API()
-        self.api.load_key(api_key, api_secret)
+        if api_key and api_secret:
+            self.api.load_key(api_key, api_secret)
         self.logger = logger
     
     def get_account_balance(self) -> Dict[str, float]:

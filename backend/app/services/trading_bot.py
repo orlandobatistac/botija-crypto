@@ -30,9 +30,10 @@ class TradingBot:
         trailing_stop_pct: float = 0.99
     ):
         """Initialize trading bot"""
-        self.kraken = KrakenClient(kraken_api_key, kraken_secret)
-        self.ai = AISignalValidator(openai_api_key)
-        self.telegram = TelegramAlerts(telegram_token, telegram_chat_id)
+        # Only initialize KrakenClient if credentials are provided
+        self.kraken = KrakenClient(kraken_api_key, kraken_secret) if kraken_api_key else None
+        self.ai = AISignalValidator(openai_api_key) if openai_api_key else None
+        self.telegram = TelegramAlerts(telegram_token, telegram_chat_id) if telegram_token else None
         
         self.trade_amount = trade_amount
         self.min_balance = min_balance
