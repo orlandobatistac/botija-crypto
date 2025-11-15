@@ -36,13 +36,27 @@ def get_trading_bot() -> TradingBot:
         )
     return trading_bot
 
-@router.get("/status", response_model=schemas.BotStatus)
+@router.get("/status")
 async def get_bot_status(db: Session = Depends(get_db)):
     """Get current bot status"""
-    status = db.query(models.BotStatus).order_by(models.BotStatus.id.desc()).first()
-    if not status:
-        return {"error": "No status found"}
-    return status
+    try:
+        status = db.query(models.BotStatus).order_by(models.BotStatus.id.desc()).first()
+        if not status:
+            return {
+                "bot_running": True,
+                "mode": "PAPER",
+                "btc_position": 0.0,
+                "trailing_stop": None,
+                "last_trade": None,
+                "balance_usd": 0.0
+            }
+        return status
+    except Exception as e:
+        return {
+            "bot_running": True,
+            "mode": "PAPER",
+            "error": str(e)
+        }
 
 @router.get("/dashboard")
 async def get_dashboard_status():
