@@ -273,23 +273,12 @@
 
                 async init() {
                     this.refreshStatus();
-                    setInterval(() => this.refreshStatus(), 30000); // Refresh every 30 seconds
+                    
+                    // Refresh status every 30 seconds from backend
+                    setInterval(() => this.refreshStatus(), 30000);
+                    
+                    // Local countdown decrement (every second)
                     setInterval(() => {
-                        this.countdown--;
-                        if (this.countdown <= 0) {
-                            this.countdown = 30;
-                        }
-                    }, 1000);
-                    // Trading cycle countdown (every second)
-                    setInterval(() => {
-                        this.tradingCountdown--;
-                        if (this.tradingCountdown <= 0) {
-                            this.tradingCountdown = 3600; // Reset to 1 hour
-                        }
-                    }, 1000);
-                    // Scheduler countdown (every second)
-                    setInterval(() => {
-                        // Decrement the countdown from backend
                         if (this.schedulerCountdown > 0) {
                             this.schedulerCountdown--;
                         }
@@ -298,39 +287,55 @@
 
                 async refreshStatus() {
                     try {
-                        // Fetch dashboard status (paper or real)
+                        // Fetch dashboard status
                         const dashResp = await fetch('/api/v1/bot/dashboard');
                         const dashboard = await dashResp.json();
 
                         this.botStatus = {
                             is_running: dashboard.mode === 'PAPER',
-                            btc_balance: dashboard.btc_balance || 0,
-                            usd_balance: dashboard.usd_balance || 0
+                            btc_balance: parseFloat(dashboard.btc_balance) || 0,
+                            usd_balance: parseFloat(dashboard.usd_balance) || 0
                         };
 
-                        // Fetch trades from paper API if in paper mode
+                        // Fetch trades
                         if (dashboard.mode === 'PAPER') {
-                            const tradesResp = await fetch('/api/v1/paper/trades');
-                            const tradesData = await tradesResp.json();
-                            this.trades = tradesData.trades || [];
+                            try {
+                                const tradesResp = await fetch('/api/v1/paper/trades');
+                                const tradesData = await tradesResp.json();
+                                this.trades = Array.isArray(tradesData.trades) ? tradesData.trades : [];
+                            } catch (e) {
+                                console.warn('Error fetching trades:', e);
+                                this.trades = [];
+                            }
                         }
 
                         // Fetch signals
-                        const signalsResp = await fetch('/api/v1/bot/signals');
-                        this.signals = await signalsResp.json();
+                        try {
+                            const signalsResp = await fetch('/api/v1/bot/signals');
+                            this.signals = Array.isArray(await signalsResp.json()) ? this.signals : [];
+                        } catch (e) {
+                            console.warn('Error fetching signals:', e);
+                            this.signals = [];
+                        }
 
-                        // Fetch scheduler status
-                        const schedulerResp = await fetch('/api/v1/bot/scheduler/status');
-                        this.schedulerStatus = await schedulerResp.json();
-
-                        // Update countdown from backend calculation
-                        if (this.schedulerStatus.seconds_until_next !== null) {
-                            this.schedulerCountdown = this.schedulerStatus.seconds_until_next;
+                        // Fetch scheduler status (CRITICAL)
+                        try {
+                            const schedulerResp = await fetch('/api/v1/bot/scheduler/status');
+                            const schedulerData = await schedulerResp.json();
+                            
+                            this.schedulerStatus = schedulerData;
+                            
+                            // Update countdown from backend
+                            if (typeof schedulerData.seconds_until_next === 'number' && schedulerData.seconds_until_next >= 0) {
+                                this.schedulerCountdown = schedulerData.seconds_until_next;
+                                console.log('Scheduler countdown updated:', this.schedulerCountdown, 'seconds');
+                            }
+                        } catch (e) {
+                            console.error('Error fetching scheduler status:', e);
                         }
 
                         this.lastUpdate = new Date().toLocaleTimeString();
                         this.loading = false;
-                        this.countdown = 30; // Reset countdown
                     } catch (err) {
                         console.error('Error refreshing status:', err);
                         this.loading = false;

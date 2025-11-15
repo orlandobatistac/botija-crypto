@@ -79,30 +79,50 @@ def shutdown_scheduler():
         logger.info("✅ Scheduler detenido")
 
 def get_scheduler_status():
-    """Retorna el estado actual del scheduler"""
-    from datetime import datetime, timedelta
+    """Retorna el estado actual del scheduler con countdown preciso"""
+    from datetime import datetime
+    import pytz
     
     status = {
         "running": scheduler.running,
         "jobs": len(scheduler.get_jobs()) if scheduler.running else 0,
-        "next_cycle": None,
         "next_run_time": None,
-        "seconds_until_next": None,
+        "seconds_until_next": 0,
         "last_result": "pending"
     }
     
-    if scheduler.running:
+    if not scheduler.running:
+        return status
+    
+    try:
         jobs = scheduler.get_jobs()
-        if jobs:
-            job = jobs[0]
-            next_run = job.next_run_time
-            if next_run:
-                now = datetime.now(next_run.tzinfo) if next_run.tzinfo else datetime.now()
-                time_until = next_run - now
-                seconds = int(time_until.total_seconds())
-                
-                status["next_run_time"] = next_run.isoformat()
-                status["seconds_until_next"] = max(0, seconds)  # Never negative
+        if not jobs:
+            return status
+        
+        job = jobs[0]
+        if not job.next_run_time:
+            return status
+        
+        next_run = job.next_run_time
+        
+        # Obtener tiempo actual con timezone awareness
+        if next_run.tzinfo:
+            now = datetime.now(next_run.tzinfo)
+        else:
+            now = datetime.now()
+        
+        # Calcular diferencia en segundos
+        time_diff = next_run - now
+        seconds = int(time_diff.total_seconds())
+        
+        status["next_run_time"] = next_run.isoformat()
+        status["seconds_until_next"] = max(0, seconds)
+        
+        logger.debug(f"Scheduler status: next_run={next_run}, now={now}, seconds={seconds}")
+        
+    except Exception as e:
+        logger.error(f"Error calculating scheduler status: {e}")
+        status["error"] = str(e)
     
     return status
 
