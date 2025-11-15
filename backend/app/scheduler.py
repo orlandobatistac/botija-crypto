@@ -46,17 +46,17 @@ def init_scheduler():
         mode = "REAL TRADING" if (kraken_key and kraken_secret) else "PAPER TRADING"
         logger.info(f"✅ Bot inicializado en modo {mode}")
         
-        # Ejecutar ciclo cada hora en punto (00:00, 01:00, 02:00, etc.)
+        # Ejecutar ciclo cada hora en punto en hora de Charlotte, NC (Eastern Time)
         scheduler.add_job(
             run_trading_cycle,
-            CronTrigger(minute=0),  # Ejecuta al minuto 0 de cada hora
+            CronTrigger(minute=0, timezone='America/New_York'),  # Charlotte, NC timezone
             id='trading_cycle',
-            name='Trading cycle - hourly on the hour',
+            name='Trading cycle - hourly on the hour (ET)',
             replace_existing=True
         )
         
         scheduler.start()
-        logger.info(f"✅ Scheduler iniciado - Ciclo de trading cada hora en punto (XX:00)")
+        logger.info(f"✅ Scheduler iniciado - Ciclo de trading cada hora en punto (XX:00 ET - Charlotte, NC)")
         
     except Exception as e:
         logger.warning(f"⚠️  Scheduler deshabilitado: {e}")
