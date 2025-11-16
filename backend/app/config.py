@@ -30,6 +30,9 @@ class Config:
     TRAILING_STOP_PERCENTAGE = float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99))
     TRADING_INTERVAL_HOURS = int(os.getenv('TRADING_INTERVAL_HOURS', 1))  # Execute every N hours on the hour
     
+    # Technical Analysis
+    KRAKEN_OHLC_INTERVAL = int(os.getenv('KRAKEN_OHLC_INTERVAL', 240))  # 1=1min, 5=5min, 15=15min, 30=30min, 60=1h, 240=4h, 1440=1day
+    
     # Bot Parameters
     TRADING_ENABLED = os.getenv('TRADING_ENABLED', 'true').lower() == 'true'
     TRADING_INTERVAL = int(os.getenv('TRADING_INTERVAL', 3600))  # 1 hour in seconds

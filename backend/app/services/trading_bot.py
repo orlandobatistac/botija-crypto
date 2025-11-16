@@ -79,7 +79,8 @@ class TradingBot:
             
             # Get OHLC data for indicators (use kraken or mock data)
             if self.kraken:
-                ohlc_data = self.kraken.get_ohlc()
+                from ..config import Config
+                ohlc_data = self.kraken.get_ohlc(interval=Config.KRAKEN_OHLC_INTERVAL)
             else:
                 # Mock OHLC for paper trading
                 ohlc_data = [[0, 0, 0, 0, current_price] for _ in range(50)]
