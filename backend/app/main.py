@@ -83,7 +83,14 @@ async def root():
     )
     
     if os.path.exists(frontend_index):
-        return FileResponse(frontend_index)
+        return FileResponse(
+            frontend_index,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
     else:
         return {"message": "Kraken AI Trading Bot API is running", "frontend": "not found"}
 
