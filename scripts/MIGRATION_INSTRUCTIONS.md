@@ -1,49 +1,46 @@
-# Migración de Base de Datos - Agregar trading_mode
+# Migración de Base de Datos - Inicializar Schema
 
 ## Problema
-La base de datos en producción no tiene la columna `trading_mode` en la tabla `bot_status`, causando errores 500.
 
-## Solución
+La base de datos en producción no existe o no tiene las tablas necesarias, causando errores 500.
 
-### Opción 1: SSH al servidor (recomendado)
+## Solución Rápida (RECOMENDADA)
+
 ```bash
-# Conectar al servidor
-ssh user@74.208.146.203
+# En el servidor (ya conectado por SSH)
+cd ~/botija
+python scripts/init_database.py
+pm2 restart all  # o el comando que uses para reiniciar el bot
+```
 
-# Navegar al directorio del proyecto
-cd /path/to/botija
+## Opciones Alternativas
 
-# Ejecutar migración
+### Opción 1: Inicializar base de datos desde cero
+
+```bash
+cd ~/botija
+# Eliminar DB antigua si existe (PERDERÁS DATOS)
+rm -f backend/app.db
+
+# Crear tablas nuevas
+python scripts/init_database.py
+
+# Reiniciar aplicación
+pm2 restart all
+```
+
+### Opción 2: Si ya tienes tabla bot_status pero falta trading_mode
+
+```bash
+cd ~/botija
 python scripts/migrate_add_trading_mode.py backend/app.db
-
-# Reiniciar servicio
-sudo systemctl restart trading-bot
-```
-
-### Opción 2: Eliminar base de datos (datos se perderán)
-```bash
-ssh user@74.208.146.203
-cd /path/to/botija/backend
-rm app.db
-# El servidor recreará la DB automáticamente con el schema correcto
-sudo systemctl restart trading-bot
-```
-
-### Opción 3: Script remoto rápido
-```bash
-ssh user@74.208.146.203 "cd /path/to/botija && python -c \"
-import sqlite3
-conn = sqlite3.connect('backend/app.db')
-conn.execute('ALTER TABLE bot_status ADD COLUMN trading_mode VARCHAR DEFAULT \\\"PAPER\\\"')
-conn.execute('UPDATE bot_status SET trading_mode = \\\"PAPER\\\" WHERE trading_mode IS NULL')
-conn.commit()
-conn.close()
-print('✅ Migración completada')
-\""
+pm2 restart all
 ```
 
 ## Verificación
+
 Después de migrar, verifica en los logs que no aparezca más el error:
+
 ```
 no such column: bot_status.trading_mode
 ```
