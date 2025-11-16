@@ -619,22 +619,22 @@
 
           // Format number with commas for thousands (e.g., 1,234.56)
           formatNumber(num, decimals = 2) {
-            if (num == null || isNaN(num)) return '0.00';
-            return parseFloat(num).toLocaleString('en-US', {
+            if (num == null || isNaN(num)) return "0.00";
+            return parseFloat(num).toLocaleString("en-US", {
               minimumFractionDigits: decimals,
-              maximumFractionDigits: decimals
+              maximumFractionDigits: decimals,
             });
           },
 
           // Format USD currency with $ and commas
           formatUSD(amount) {
-            if (amount == null || isNaN(amount)) return '$0.00';
-            return '$' + this.formatNumber(amount, 2);
+            if (amount == null || isNaN(amount)) return "$0.00";
+            return "$" + this.formatNumber(amount, 2);
           },
 
           // Format BTC with 8 decimals
           formatBTC(amount) {
-            if (amount == null || isNaN(amount)) return '0.00000000';
+            if (amount == null || isNaN(amount)) return "0.00000000";
             return this.formatNumber(amount, 8);
           },
 
