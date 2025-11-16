@@ -635,12 +635,22 @@
                   usd_balance: parseFloat(dashboard.usd_balance) || 0,
                 };
 
-                // 3. Fetch all trades
+                // 3. Fetch trades based on mode
                 try {
-                  const tradesResp = await fetch("/api/v1/trades");
-                  if (tradesResp.ok) {
-                    const tradesData = await tradesResp.json();
-                    this.trades = Array.isArray(tradesData) ? tradesData : [];
+                  if (dashboard.mode === "PAPER") {
+                    // Paper mode - get simulated trades
+                    const tradesResp = await fetch("/api/v1/paper/trades");
+                    if (tradesResp.ok) {
+                      const tradesData = await tradesResp.json();
+                      this.trades = Array.isArray(tradesData.trades) ? tradesData.trades : [];
+                    }
+                  } else {
+                    // Real mode - get actual Kraken trades
+                    const tradesResp = await fetch("/api/v1/trades");
+                    if (tradesResp.ok) {
+                      const tradesData = await tradesResp.json();
+                      this.trades = Array.isArray(tradesData) ? tradesData : [];
+                    }
                   }
                 } catch (e) {
                   console.warn("Error fetching trades:", e);
