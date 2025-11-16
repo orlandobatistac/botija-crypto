@@ -131,7 +131,7 @@
             ></div>
             <div
               class="text-xs text-blue-300/70"
-              x-text="schedulerStatus.next_run_time ? new Date(schedulerStatus.next_run_time).toLocaleString() : 'Not scheduled'"
+              x-text="schedulerStatus.next_run_time ? toET(schedulerStatus.next_run_time) : 'Not scheduled'"
             ></div>
           </div>
 
@@ -144,7 +144,7 @@
             </div>
             <div
               class="text-lg font-mono text-gray-200 mb-2"
-              x-text="schedulerStatus.last_cycle ? new Date(schedulerStatus.last_cycle).toLocaleTimeString() : 'Never'"
+              x-text="schedulerStatus.last_cycle ? toETTime(schedulerStatus.last_cycle) : 'Never'"
             ></div>
             <div class="flex items-center gap-2">
               <span
@@ -241,10 +241,7 @@
                 <template x-for="cycle in cycles" :key="cycle.id">
                   <tr class="hover:bg-gray-700/30 transition-colors">
                     <td class="px-4 py-3 text-gray-300">
-                      <div
-                        class="text-xs"
-                        x-text="new Date(cycle.timestamp).toLocaleString()"
-                      ></div>
+                      <div class="text-xs" x-text="toET(cycle.timestamp)"></div>
                     </td>
                     <td class="px-4 py-3">
                       <div
@@ -445,7 +442,7 @@
                     </td>
                     <td
                       class="px-4 py-3 text-xs text-gray-400"
-                      x-text="new Date(trade.created_at).toLocaleString()"
+                      x-text="toET(trade.created_at)"
                     ></td>
                   </tr>
                 </template>
@@ -506,7 +503,7 @@
               >
                 <span
                   class="text-gray-500"
-                  x-text="new Date(log.timestamp).toLocaleTimeString()"
+                  x-text="toETTime(log.timestamp)"
                 ></span>
                 <span
                   :class="{
@@ -536,7 +533,7 @@
           class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500"
         >
           Kraken AI Trading Bot v1.0.0 | Last update:
-          <span x-text="new Date().toLocaleTimeString()"></span>
+          <span x-text="toETTime(new Date().toISOString())"></span>
         </div>
       </footer>
     </div>
@@ -592,6 +589,32 @@
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
             return `${mins}m ${secs}s`;
+          },
+
+          // Convert UTC timestamp to ET (New York timezone)
+          toET(timestamp) {
+            if (!timestamp) return "";
+            return new Date(timestamp).toLocaleString("en-US", {
+              timeZone: "America/New_York",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true,
+            });
+          },
+
+          toETTime(timestamp) {
+            if (!timestamp) return "";
+            return new Date(timestamp).toLocaleTimeString("en-US", {
+              timeZone: "America/New_York",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true,
+            });
           },
 
           get totalPortfolio() {
@@ -685,7 +708,7 @@
                 console.warn("Error fetching signals:", e);
               }
 
-              this.lastUpdate = new Date().toLocaleTimeString();
+              this.lastUpdate = this.toETTime(new Date().toISOString());
               this.loading = false;
             } catch (err) {
               console.error("Critical error in refreshStatus:", err);
