@@ -587,9 +587,18 @@
           },
 
           formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            return `${mins}m ${secs}s`;
+
+            const parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0) parts.push(`${hours}h`);
+            if (mins > 0) parts.push(`${mins}m`);
+            if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+
+            return parts.join(" ");
           },
 
           // Convert UTC timestamp to ET (New York timezone)
@@ -703,14 +712,22 @@
                   const diff = Math.abs(
                     this.schedulerCountdown - schedulerData.seconds_until_next
                   );
-                  // Only update if difference > 2 seconds or countdown is at 0
-                  if (diff > 2 || this.schedulerCountdown === 0) {
+                  // Only update if:
+                  // 1. Countdown is at 0 (needs reset)
+                  // 2. Major desync (>5 seconds difference)
+                  // This prevents visual flicker during normal countdown
+                  if (this.schedulerCountdown === 0 || diff > 5) {
                     this.schedulerCountdown = Math.max(
                       0,
                       schedulerData.seconds_until_next
                     );
                     console.log(
                       `[SCHEDULER] Updated countdown: ${this.schedulerCountdown}s, next_run: ${schedulerData.next_run_time}`
+                    );
+                  } else if (diff > 2) {
+                    // Log drift but don't update visible countdown
+                    console.log(
+                      `[SCHEDULER] Drift detected: ${diff}s, keeping local countdown`
                     );
                   }
                   // Track last successful sync
