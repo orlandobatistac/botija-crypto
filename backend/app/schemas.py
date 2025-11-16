@@ -31,6 +31,7 @@ class Trade(TradeBase):
 
 class BotStatusBase(BaseModel):
     is_running: bool
+    trading_mode: str = "PAPER"
     btc_balance: float
     usd_balance: float
 
@@ -39,6 +40,8 @@ class BotStatusCreate(BotStatusBase):
 
 class BotStatus(BotStatusBase):
     id: int
+    last_buy_price: Optional[float] = None
+    trailing_stop_price: Optional[float] = None
     last_check: datetime
     last_trade_id: Optional[str] = None
     error_count: int

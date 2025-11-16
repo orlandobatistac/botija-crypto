@@ -29,8 +29,11 @@ class BotStatus(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     is_running = Column(Boolean, default=False)
+    trading_mode = Column(String, default="PAPER")  # PAPER, REAL
     btc_balance = Column(Float, default=0.0)
     usd_balance = Column(Float, default=0.0)
+    last_buy_price = Column(Float, nullable=True)
+    trailing_stop_price = Column(Float, nullable=True)
     last_check = Column(DateTime(timezone=True), server_default=func.now())
     last_trade_id = Column(String, nullable=True)
     error_count = Column(Integer, default=0)
