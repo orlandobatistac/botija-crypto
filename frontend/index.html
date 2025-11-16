@@ -487,14 +487,13 @@
               >
                 🔄 Refresh
               </button>
-              <button
-                @click="toggleAutoRefreshLogs()"
-                :class="autoRefreshLogs ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'"
-                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+              <a
+                href="/api/v1/bot/logs/download"
+                download="botija.log"
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors inline-block"
               >
-                <span x-show="autoRefreshLogs">⏸️ Pause</span>
-                <span x-show="!autoRefreshLogs">▶️ Auto</span>
-              </button>
+                📥 Download
+              </a>
             </div>
           </div>
           <div
@@ -575,7 +574,7 @@
           manualCycleRunning: false,
           logs: [],
           logLevel: "",
-          autoRefreshLogs: true,
+          autoRefreshLogs: false,
 
           get timeSinceLastCycle() {
             if (!this.schedulerStatus.last_cycle) return "-";
@@ -608,13 +607,6 @@
 
             // Refresh status every 30 seconds from backend
             setInterval(() => this.refreshStatus(), 30000);
-
-            // Refresh logs every 5 seconds if auto-refresh enabled
-            setInterval(() => {
-              if (this.autoRefreshLogs) {
-                this.fetchLogs();
-              }
-            }, 5000);
 
             // Refresh cycles every 10 seconds
             setInterval(() => this.fetchCycles(), 10000);
@@ -777,10 +769,6 @@
             } catch (err) {
               console.error("Error fetching logs:", err);
             }
-          },
-
-          toggleAutoRefreshLogs() {
-            this.autoRefreshLogs = !this.autoRefreshLogs;
           },
         };
       }

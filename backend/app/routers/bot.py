@@ -3,8 +3,11 @@ Bot router for Kraken AI Trading Bot
 """
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response, FileResponse
 from sqlalchemy.orm import Session
 import os
+import subprocess
+from pathlib import Path
 from .. import models, schemas
 from ..database import get_db
 from ..services import TradingBot, TechnicalIndicators
@@ -252,6 +255,53 @@ async def get_logs(
         "logs": logs,
         "total": len(logs)
     }
+
+@router.get("/logs/download")
+async def download_logs():
+    """Download complete log file"""
+    # Check if running in production (systemd service)
+    service_name = "kraken-ai-trading-bot"
+    
+    # Try to get logs from systemd journal (production)
+    try:
+        result = subprocess.run(
+            ["journalctl", "-u", service_name, "--no-pager"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0 and result.stdout:
+            # Return journalctl logs as file
+            return Response(
+                content=result.stdout,
+                media_type="text/plain",
+                headers={
+                    "Content-Disposition": "attachment; filename=botija.log"
+                }
+            )
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+        # journalctl not available or failed, use in-memory logs
+        pass
+    
+    # Fallback: Use in-memory logs (development)
+    handler = get_log_handler()
+    logs = handler.get_logs(limit=10000)  # Get up to 10k logs
+    
+    # Format logs as text
+    log_lines = []
+    for log in logs:
+        log_lines.append(f"{log['timestamp']} - {log['logger']} - {log['level']} - {log['message']}")
+    
+    log_content = "\n".join(log_lines)
+    
+    return Response(
+        content=log_content,
+        media_type="text/plain",
+        headers={
+            "Content-Disposition": "attachment; filename=botija.log"
+        }
+    )
 
 @router.get("/cycles", response_model=list[schemas.TradingCycle])
 async def get_trading_cycles(
