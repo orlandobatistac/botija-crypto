@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    from .database import engine, Base
+    Base.metadata.create_all(bind=engine)  # Create tables
     setup_log_handler()  # Setup in-memory log handler
     init_scheduler()
     logger.info("🚀 Kraken AI Trading Bot iniciado")
