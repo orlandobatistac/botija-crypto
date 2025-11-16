@@ -38,7 +38,7 @@ def init_scheduler():
         try:
             last_db_cycle = db.query(TradingCycle).order_by(TradingCycle.timestamp.desc()).first()
             if last_db_cycle:
-                last_cycle_info["timestamp"] = last_db_cycle.timestamp.isoformat()
+                last_cycle_info["timestamp"] = last_db_cycle.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
                 last_cycle_info["status"] = "success" if last_db_cycle.action in ["BOUGHT", "SOLD", "HOLD"] else "error"
                 last_cycle_info["error"] = last_db_cycle.error_message
                 last_cycle_info["trigger"] = last_db_cycle.trigger or "scheduled"
@@ -111,11 +111,11 @@ def run_trading_cycle():
     global last_cycle_info
     
     try:
-        now = datetime.now()
+        now = datetime.utcnow()
         logger.info(f"🔄 Iniciando ciclo de trading - {now.strftime('%Y-%m-%d %H:%M:%S')}")
         
         # Update cycle start
-        last_cycle_info["timestamp"] = now.isoformat()
+        last_cycle_info["timestamp"] = now.strftime('%Y-%m-%dT%H:%M:%SZ')
         last_cycle_info["status"] = "running"
         last_cycle_info["error"] = None
         last_cycle_info["trigger"] = "scheduled"

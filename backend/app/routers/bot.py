@@ -155,7 +155,7 @@ async def run_trading_cycle(
     """Execute one trading cycle manually"""
     try:
         # Update last cycle info - start
-        last_cycle_info["timestamp"] = datetime.now().isoformat()
+        last_cycle_info["timestamp"] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         last_cycle_info["status"] = "running"
         last_cycle_info["error"] = None
         last_cycle_info["trigger"] = "manual"
