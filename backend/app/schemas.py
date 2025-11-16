@@ -28,6 +28,9 @@ class Trade(TradeBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%SZ') if v else None
+        }
 
 class BotStatusBase(BaseModel):
     is_running: bool
@@ -67,6 +70,9 @@ class Signal(SignalBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%SZ') if v else None
+        }
 
 class TradingCycleBase(BaseModel):
     btc_price: float
@@ -98,3 +104,6 @@ class TradingCycle(TradingCycleBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%SZ') if v else None
+        }
