@@ -39,6 +39,10 @@ jobs:
             
             # Deploy
             cd /root/botija || exit 1
+            
+            # Ensure using SSH remote
+            git remote set-url origin git@github.com:orlandobatistac/botija.git
+            
             echo "📦 Resetting local changes..."
             git reset --hard origin/main
             echo "📦 Pulling latest code..."
