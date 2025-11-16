@@ -638,7 +638,9 @@
                 // 3. Fetch trades filtered by mode
                 try {
                   const mode = dashboard.mode || "PAPER";
-                  const tradesResp = await fetch(`/api/v1/trades?mode=${mode}&limit=50`);
+                  const tradesResp = await fetch(
+                    `/api/v1/trades?mode=${mode}&limit=50`
+                  );
                   if (tradesResp.ok) {
                     const tradesData = await tradesResp.json();
                     this.trades = Array.isArray(tradesData) ? tradesData : [];

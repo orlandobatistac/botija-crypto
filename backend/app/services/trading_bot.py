@@ -166,21 +166,24 @@ class TradingBot:
                 }
                 
                 # Send alert
-                self.telegram.send_buy_signal(
-                    current_price,
-                    quantity,
-                    analysis['ai_signal']['confidence']
-                )
+                if self.telegram:
+                    self.telegram.send_buy_signal(
+                        current_price,
+                        quantity,
+                        analysis['ai_signal']['confidence']
+                    )
                 
                 return True
             else:
                 self.logger.error(f"Buy order failed: {result['error']}")
-                self.telegram.send_error_alert(f"Buy order failed: {result['error']}")
+                if self.telegram:
+                    self.telegram.send_error_alert(f"Buy order failed: {result['error']}")
                 return False
         
         except Exception as e:
             self.logger.error(f"Error executing buy: {e}")
-            self.telegram.send_error_alert(str(e))
+            if self.telegram:
+                self.telegram.send_error_alert(str(e))
             return False
     
     async def execute_sell(self, analysis: Dict) -> bool:
@@ -206,23 +209,26 @@ class TradingBot:
             
             if result['success']:
                 # Send alert
-                self.telegram.send_sell_signal(
-                    entry_price,
-                    exit_price,
-                    profit_loss,
-                    'TRAILING_STOP' if analysis['analysis_type'] == 'trailing' else 'AI_SIGNAL'
-                )
+                if self.telegram:
+                    self.telegram.send_sell_signal(
+                        entry_price,
+                        exit_price,
+                        profit_loss,
+                        'TRAILING_STOP' if analysis['analysis_type'] == 'trailing' else 'AI_SIGNAL'
+                    )
                 
                 self.active_trade = None
                 return True
             else:
                 self.logger.error(f"Sell order failed: {result['error']}")
-                self.telegram.send_error_alert(f"Sell order failed: {result['error']}")
+                if self.telegram:
+                    self.telegram.send_error_alert(f"Sell order failed: {result['error']}")
                 return False
         
         except Exception as e:
             self.logger.error(f"Error executing sell: {e}")
-            self.telegram.send_error_alert(str(e))
+            if self.telegram:
+                self.telegram.send_error_alert(str(e))
             return False
     
     async def run_cycle(self) -> Dict:
@@ -373,10 +379,12 @@ class TradingBot:
         """Start the trading bot"""
         self.is_running = True
         self.logger.info("Trading bot started")
-        self.telegram.send_message("🟢 <b>Trading Bot Started</b> 🟢")
+        if self.telegram:
+            self.telegram.send_message("🟢 <b>Trading Bot Started</b> 🟢")
     
     async def stop(self):
         """Stop the trading bot"""
         self.is_running = False
         self.logger.info("Trading bot stopped")
-        self.telegram.send_message("🔴 <b>Trading Bot Stopped</b> 🔴")
+        if self.telegram:
+            self.telegram.send_message("🔴 <b>Trading Bot Stopped</b> 🔴")

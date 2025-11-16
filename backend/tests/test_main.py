@@ -40,7 +40,7 @@ def test_root():
     """Test root endpoint"""
     response = client.get("/")
     assert response.status_code == 200
-    assert "message" in response.json()
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
 
 def test_health():
     """Test health check endpoint"""

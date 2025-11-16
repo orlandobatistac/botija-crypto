@@ -61,17 +61,31 @@ else:
     logger.warning(f"Static files directory not found at {frontend_static}")
 
 # Import routers
-from app.routers import bot, trades, indicators, paper
+from app.routers import bot, trades, indicators, paper, cycles
 
 # Include routers
 app.include_router(bot.router)
 app.include_router(trades.router)
 app.include_router(indicators.router)
 app.include_router(paper.router)
+app.include_router(cycles.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Kraken AI Trading Bot API is running"}
+    """Serve the frontend HTML"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    frontend_index = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+        "frontend", 
+        "index.html"
+    )
+    
+    if os.path.exists(frontend_index):
+        return FileResponse(frontend_index)
+    else:
+        return {"message": "Kraken AI Trading Bot API is running", "frontend": "not found"}
 
 @app.get("/health")
 async def health_check():
@@ -84,25 +98,33 @@ async def api_status():
 
 @app.get("/api/v1/bot/status")
 async def bot_status():
-    """Get current bot trading status"""
-    return {
-        "bot_running": True,
-        "btc_position": 0.0,
-        "trailing_stop": None,
-        "last_trade": None,
-        "balance_usd": 0.0
-    }
-
-@app.post("/api/v1/bot/start")
-async def start_bot():
-    """Start the trading bot"""
-    return {"message": "Bot started", "status": "running"}
-
-@app.post("/api/v1/bot/stop")
-async def stop_bot():
-    """Stop the trading bot"""
-    return {"message": "Bot stopped", "status": "stopped"}
+    """Get current bot trading status - legacy endpoint, use /api/v1/bot/status instead"""
+    from app.database import SessionLocal
+    from app.models import BotStatus
+    
+    db = SessionLocal()
+    try:
+        status = db.query(BotStatus).order_by(BotStatus.id.desc()).first()
+        if status:
+            return {
+                "is_running": status.is_running,
+                "trading_mode": status.trading_mode,
+                "btc_balance": status.btc_balance,
+                "usd_balance": status.usd_balance,
+                "last_buy_price": status.last_buy_price,
+                "trailing_stop_price": status.trailing_stop_price
+            }
+        return {
+            "is_running": True,
+            "trading_mode": "PAPER",
+            "btc_balance": 0.0,
+            "usd_balance": 0.0,
+            "last_buy_price": None,
+            "trailing_stop_price": None
+        }
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8002)

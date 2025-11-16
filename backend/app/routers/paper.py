@@ -4,7 +4,7 @@ Paper trading routes
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from .. import schemas
+from .. import schemas, models
 from ..database import get_db
 from ..services.modes.paper import PaperTradingEngine
 
@@ -22,27 +22,19 @@ async def get_wallet():
     return paper_engine.get_wallet_summary()
 
 @router.get("/trades")
-async def get_paper_trades(limit: int = 20):
-    """Get recent simulated trades"""
+async def get_paper_trades(limit: int = 20, db: Session = Depends(get_db)):
+    """Get recent simulated trades from database"""
     try:
-        trades = []
-        import csv
-        from pathlib import Path
+        trades = db.query(models.Trade)\
+            .filter(models.Trade.trading_mode == "PAPER")\
+            .order_by(models.Trade.created_at.desc())\
+            .limit(limit)\
+            .all()
         
-        trades_path = Path(__file__).parent.parent.parent / 'data' / 'paper_trades.csv'
-        
-        if trades_path.exists():
-            with open(trades_path, 'r') as f:
-                reader = csv.DictReader(f)
-                for i, row in enumerate(reader):
-                    if i >= limit:
-                        break
-                    trades.append(row)
-            
-            # Reverse to show most recent first
-            trades.reverse()
-        
-        return {"trades": trades, "total": len(trades)}
+        return {
+            "trades": [schemas.TradeResponse.from_orm(t).dict() for t in trades],
+            "total": len(trades)
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -85,30 +77,21 @@ async def simulate_sell(price: float, btc_amount: float):
         return {"success": False, "error": str(e)}
 
 @router.get("/stats")
-async def get_paper_stats():
+async def get_paper_stats(db: Session = Depends(get_db)):
     """Get paper trading statistics"""
     try:
         wallet = paper_engine.get_wallet_summary()
         
-        # Calculate stats
-        total_trades = 0
-        buy_trades = 0
-        sell_trades = 0
+        # Calculate stats from database
+        buy_trades = db.query(models.Trade)\
+            .filter(models.Trade.trading_mode == "PAPER", models.Trade.order_type == "BUY")\
+            .count()
         
-        import csv
-        from pathlib import Path
+        sell_trades = db.query(models.Trade)\
+            .filter(models.Trade.trading_mode == "PAPER", models.Trade.order_type == "SELL")\
+            .count()
         
-        trades_path = Path(__file__).parent.parent.parent / 'data' / 'paper_trades.csv'
-        
-        if trades_path.exists():
-            with open(trades_path, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    total_trades += 1
-                    if row.get('type') == 'BUY':
-                        buy_trades += 1
-                    elif row.get('type') == 'SELL':
-                        sell_trades += 1
+        total_trades = buy_trades + sell_trades
         
         return {
             "wallet": wallet,
@@ -121,3 +104,4 @@ async def get_paper_stats():
         }
     except Exception as e:
         return {"error": str(e)}
+

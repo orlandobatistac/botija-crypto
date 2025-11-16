@@ -99,3 +99,7 @@ docs/private/
 # Trading Bot Specific
 trailing_stop.txt
 bot_trading_pro.py
+
+# Legacy Paper Trading Files (migrated to SQLite)
+backend/data/paper_wallet.json
+backend/data/paper_trades.csv

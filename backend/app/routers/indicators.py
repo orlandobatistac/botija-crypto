@@ -101,3 +101,54 @@ async def analyze_signals(data: List[float]):
         return analysis
     except Exception as e:
         return {"error": str(e)}
+
+@router.get("/current")
+async def get_current_indicators():
+    """Get current market indicators for BTC/USD"""
+    try:
+        from ..services import KrakenClient
+        import os
+        
+        # Initialize Kraken client
+        kraken = KrakenClient(
+            api_key=os.getenv('KRAKEN_API_KEY', ''),
+            secret_key=os.getenv('KRAKEN_SECRET_KEY', '')
+        )
+        
+        # Get current price
+        price = kraken.get_current_price('XBTUSDT')
+        
+        # Get historical data for indicators
+        ohlc_data = kraken.get_ohlc('XBTUSDT', interval=240, count=100)
+        
+        if ohlc_data and len(ohlc_data) > 0:
+            close_prices = [float(candle[4]) for candle in ohlc_data]
+            
+            # Calculate indicators
+            ema_20 = TechnicalIndicators.calculate_ema(close_prices, 20)
+            ema_50 = TechnicalIndicators.calculate_ema(close_prices, 50)
+            rsi_14 = TechnicalIndicators.calculate_rsi(close_prices, 14)
+            
+            return {
+                "price": price,
+                "ema_20": ema_20[-1] if ema_20 and len(ema_20) > 0 else None,
+                "ema_50": ema_50[-1] if ema_50 and len(ema_50) > 0 else None,
+                "rsi_14": rsi_14[-1] if rsi_14 and len(rsi_14) > 0 else None,
+                "timestamp": ohlc_data[-1][0] if ohlc_data else None
+            }
+        else:
+            return {
+                "price": price,
+                "ema_20": None,
+                "ema_50": None,
+                "rsi_14": None,
+                "error": "No historical data available"
+            }
+    except Exception as e:
+        return {
+            "price": 0.0,
+            "ema_20": None,
+            "ema_50": None,
+            "rsi_14": None,
+            "error": str(e)
+        }
