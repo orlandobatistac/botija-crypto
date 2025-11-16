@@ -120,3 +120,19 @@ class RealTradingEngine(TradingEngine):
         except Exception as e:
             self.logger.error(f"Error closing position: {e}")
             return False
+    
+    def get_balance(self) -> Dict[str, float]:
+        """Get current balances"""
+        return self.load_balances()
+    
+    def get_current_price(self) -> float:
+        """Get current BTC price from Kraken"""
+        try:
+            ticker = self.kraken.get_ticker()
+            if ticker and 'c' in ticker:
+                price = float(ticker['c'][0])
+                return price
+            return 0.0
+        except Exception as e:
+            self.logger.error(f"Error getting current price: {e}")
+            return 0.0

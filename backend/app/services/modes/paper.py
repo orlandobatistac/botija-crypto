@@ -5,6 +5,7 @@ Paper trading mode - simulates trades with real market data
 import logging
 import json
 import csv
+import requests
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Tuple
@@ -250,3 +251,40 @@ class PaperTradingEngine(TradingEngine):
             'created_at': self.wallet['created_at'],
             'last_updated': self.wallet['last_updated']
         }
+    
+    def get_balance(self) -> Dict[str, float]:
+        """Get current balances"""
+        return {
+            'btc': self.wallet['btc_balance'],
+            'usd': self.wallet['usd_balance']
+        }
+    
+    def get_current_price(self) -> float:
+        """Get current BTC price from Kraken public API"""
+        try:
+            # Use Kraken public API (no authentication required)
+            response = requests.get(
+                'https://api.kraken.com/0/public/Ticker',
+                params={'pair': 'XBTUSDT'},
+                timeout=10
+            )
+            data = response.json()
+            
+            if data.get('error'):
+                self.logger.error(f"Kraken API error: {data['error']}")
+                return 0.0
+            
+            # Get last trade price
+            result = data.get('result', {})
+            pair_data = result.get('XXBTZUSD') or result.get('XBTUSDT')
+            
+            if pair_data and 'c' in pair_data:
+                price = float(pair_data['c'][0])
+                self.logger.debug(f"Current BTC price: ${price:,.2f}")
+                return price
+            
+            return 0.0
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching price: {e}")
+            return 0.0

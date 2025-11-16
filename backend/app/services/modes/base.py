@@ -72,3 +72,21 @@ class TradingEngine(ABC):
             bool: Success status
         """
         pass
+    
+    @abstractmethod
+    def get_balance(self) -> Dict[str, float]:
+        """Get current balances
+        
+        Returns:
+            Dict with 'btc' and 'usd' keys
+        """
+        pass
+    
+    @abstractmethod
+    def get_current_price(self) -> float:
+        """Get current BTC price
+        
+        Returns:
+            float: Current BTC price in USD
+        """
+        pass
