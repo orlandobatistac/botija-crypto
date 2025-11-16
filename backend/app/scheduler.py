@@ -27,9 +27,25 @@ last_cycle_info = {
 
 def init_scheduler():
     """Inicializa el scheduler con el bot de trading"""
-    global trading_bot
+    global trading_bot, last_cycle_info
     
     try:
+        # Load last cycle from database
+        from .database import SessionLocal
+        from .models import TradingCycle
+        
+        db = SessionLocal()
+        try:
+            last_db_cycle = db.query(TradingCycle).order_by(TradingCycle.timestamp.desc()).first()
+            if last_db_cycle:
+                last_cycle_info["timestamp"] = last_db_cycle.timestamp.isoformat()
+                last_cycle_info["status"] = "success" if last_db_cycle.action in ["BOUGHT", "SOLD", "HOLD"] else "error"
+                last_cycle_info["error"] = last_db_cycle.error_message
+                last_cycle_info["trigger"] = last_db_cycle.trigger or "scheduled"
+                logger.info(f"📊 Loaded last cycle from DB: {last_db_cycle.timestamp} - {last_db_cycle.action}")
+        finally:
+            db.close()
+        
         config = Config()
         
         # Obtener credenciales y parámetros
