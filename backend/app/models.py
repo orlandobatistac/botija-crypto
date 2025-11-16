@@ -48,3 +48,34 @@ class Signal(Base):
     confidence = Column(Float)
     action_taken = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
+
+class TradingCycle(Base):
+    __tablename__ = "trading_cycles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Market data
+    btc_price = Column(Float)
+    ema20 = Column(Float)
+    ema50 = Column(Float)
+    rsi14 = Column(Float)
+    
+    # Balances
+    btc_balance = Column(Float)
+    usd_balance = Column(Float)
+    
+    # AI Signal
+    ai_signal = Column(String)  # BUY, SELL, HOLD
+    ai_confidence = Column(Float)
+    ai_reason = Column(Text, nullable=True)
+    
+    # Action taken
+    action = Column(String)  # BOUGHT, SOLD, HOLD, ERROR
+    trade_id = Column(String, nullable=True)
+    
+    # Execution details
+    execution_time_ms = Column(Integer, nullable=True)  # milliseconds
+    trading_mode = Column(String)  # PAPER, REAL
+    error_message = Column(Text, nullable=True)
+

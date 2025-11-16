@@ -227,23 +227,62 @@ class TradingBot:
     
     async def run_cycle(self) -> Dict:
         """Execute one trading cycle"""
+        import time
+        from ..models import TradingCycle
+        from ..database import SessionLocal
+        
+        start_time = time.time()
+        cycle_data = {
+            'btc_price': 0,
+            'ema20': 0,
+            'ema50': 0,
+            'rsi14': 0,
+            'btc_balance': 0,
+            'usd_balance': 0,
+            'ai_signal': 'HOLD',
+            'ai_confidence': 0,
+            'ai_reason': None,
+            'action': 'ERROR',
+            'trade_id': None,
+            'trading_mode': 'PAPER' if not self.kraken else 'REAL',
+            'error_message': None
+        }
+        
         try:
             logger.info("📊 Analizando mercado...")
             analysis = await self.analyze_market()
             
             if not analysis:
                 logger.warning("⚠️  Análisis falló - sin datos")
+                cycle_data['error_message'] = 'Analysis failed - no data'
+                cycle_data['action'] = 'ERROR'
+                self._save_cycle(cycle_data, int((time.time() - start_time) * 1000))
                 return {'success': False, 'reason': 'Analysis failed'}
+            
+            # Update cycle data from analysis
+            cycle_data['btc_price'] = analysis.get('current_price', 0)
+            cycle_data['btc_balance'] = analysis.get('btc_balance', 0)
+            cycle_data['usd_balance'] = analysis.get('usd_balance', 0)
+            
+            tech = analysis.get('tech_signals', {})
+            if tech:
+                cycle_data['ema20'] = tech.get('ema20', 0)
+                cycle_data['ema50'] = tech.get('ema50', 0)
+                cycle_data['rsi14'] = tech.get('rsi14', 0)
+            
+            ai_sig = analysis.get('ai_signal', {})
+            if ai_sig:
+                cycle_data['ai_signal'] = ai_sig.get('signal', 'HOLD')
+                cycle_data['ai_confidence'] = ai_sig.get('confidence', 0)
+                cycle_data['ai_reason'] = ai_sig.get('reason', None)
             
             # Log market data
             logger.info(f"💰 Precio actual: ${analysis.get('current_price', 0):.2f}")
             logger.info(f"📈 BTC: {analysis.get('btc_balance', 0):.8f} | USD: ${analysis.get('usd_balance', 0):.2f}")
             
-            tech = analysis.get('tech_signals', {})
             if tech:
                 logger.info(f"📉 Indicadores - EMA20: {tech.get('ema20', 0):.2f} | EMA50: {tech.get('ema50', 0):.2f} | RSI: {tech.get('rsi14', 0):.2f}")
             
-            ai_sig = analysis.get('ai_signal', {})
             if ai_sig:
                 logger.info(f"🤖 Señal AI: {ai_sig.get('signal', 'N/A')} (confianza: {ai_sig.get('confidence', 0):.2f}%)")
             
@@ -269,23 +308,66 @@ class TradingBot:
             # Check for buy signal
             if analysis['should_buy']:
                 logger.info("✅ Señal de COMPRA detectada")
-                await self.execute_buy(analysis)
+                result = await self.execute_buy(analysis)
+                cycle_data['action'] = 'BOUGHT' if result else 'BUY_FAILED'
+                if result and self.active_trade:
+                    cycle_data['trade_id'] = self.active_trade.get('trade_id')
             
             # Check for sell signal
             elif analysis['should_sell']:
                 logger.info("✅ Señal de VENTA detectada")
                 analysis['analysis_type'] = 'signal'
-                await self.execute_sell(analysis)
+                result = await self.execute_sell(analysis)
+                cycle_data['action'] = 'SOLD' if result else 'SELL_FAILED'
             else:
                 logger.info("⏸️  Sin señales de trading - modo espera")
+                cycle_data['action'] = 'HOLD'
+            
+            # Save cycle to database
+            execution_time = int((time.time() - start_time) * 1000)
+            self._save_cycle(cycle_data, execution_time)
             
             return {'success': True, 'analysis': analysis}
         
         except Exception as e:
             logger.error(f"❌ Error en ciclo de trading: {e}")
+            cycle_data['error_message'] = str(e)
+            cycle_data['action'] = 'ERROR'
+            self._save_cycle(cycle_data, int((time.time() - start_time) * 1000))
+            
             if self.telegram:
                 self.telegram.send_error_alert(str(e), 'HIGH')
             return {'success': False, 'error': str(e)}
+    
+    def _save_cycle(self, cycle_data: Dict, execution_time_ms: int):
+        """Save trading cycle to database"""
+        try:
+            from ..models import TradingCycle
+            from ..database import SessionLocal
+            
+            db = SessionLocal()
+            cycle = TradingCycle(
+                btc_price=cycle_data['btc_price'],
+                ema20=cycle_data['ema20'],
+                ema50=cycle_data['ema50'],
+                rsi14=cycle_data['rsi14'],
+                btc_balance=cycle_data['btc_balance'],
+                usd_balance=cycle_data['usd_balance'],
+                ai_signal=cycle_data['ai_signal'],
+                ai_confidence=cycle_data['ai_confidence'],
+                ai_reason=cycle_data['ai_reason'],
+                action=cycle_data['action'],
+                trade_id=cycle_data['trade_id'],
+                execution_time_ms=execution_time_ms,
+                trading_mode=cycle_data['trading_mode'],
+                error_message=cycle_data['error_message']
+            )
+            db.add(cycle)
+            db.commit()
+            db.close()
+            logger.info(f"💾 Ciclo guardado en DB ({execution_time_ms}ms)")
+        except Exception as e:
+            logger.error(f"Error guardando ciclo en DB: {e}")
     
     async def start(self):
         """Start the trading bot"""

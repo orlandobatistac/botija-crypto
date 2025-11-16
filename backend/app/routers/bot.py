@@ -227,3 +227,21 @@ async def get_logs(
         "logs": logs,
         "total": len(logs)
     }
+
+@router.get("/cycles", response_model=list[schemas.TradingCycle])
+async def get_trading_cycles(
+    limit: int = Query(50, description="Number of cycles to return"),
+    db: Session = Depends(get_db)
+):
+    """Get recent trading cycle executions"""
+    cycles = db.query(models.TradingCycle).order_by(models.TradingCycle.timestamp.desc()).limit(limit).all()
+    return cycles
+
+@router.get("/cycles/{cycle_id}", response_model=schemas.TradingCycle)
+async def get_trading_cycle(cycle_id: int, db: Session = Depends(get_db)):
+    """Get specific trading cycle details"""
+    cycle = db.query(models.TradingCycle).filter(models.TradingCycle.id == cycle_id).first()
+    if not cycle:
+        return {"error": "Cycle not found"}
+    return cycle
+

@@ -63,3 +63,32 @@ class Signal(SignalBase):
     
     class Config:
         from_attributes = True
+
+class TradingCycleBase(BaseModel):
+    btc_price: float
+    ema20: float
+    ema50: float
+    rsi14: float
+    btc_balance: float
+    usd_balance: float
+    ai_signal: str
+    ai_confidence: float
+    action: str
+    trading_mode: str
+
+class TradingCycleCreate(TradingCycleBase):
+    ai_reason: Optional[str] = None
+    trade_id: Optional[str] = None
+    execution_time_ms: Optional[int] = None
+    error_message: Optional[str] = None
+
+class TradingCycle(TradingCycleBase):
+    id: int
+    timestamp: datetime
+    ai_reason: Optional[str] = None
+    trade_id: Optional[str] = None
+    execution_time_ms: Optional[int] = None
+    error_message: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
