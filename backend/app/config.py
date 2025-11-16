@@ -28,6 +28,7 @@ class Config:
     MIN_BALANCE_USD = float(os.getenv('MIN_BALANCE_USD', 0))  # 0 = use percentage
     MIN_BALANCE_PERCENT = float(os.getenv('MIN_BALANCE_PERCENT', 20))  # 20% default
     TRAILING_STOP_PERCENTAGE = float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99))
+    TRADING_INTERVAL_HOURS = int(os.getenv('TRADING_INTERVAL_HOURS', 1))  # Execute every N hours on the hour
     
     # Bot Parameters
     TRADING_ENABLED = os.getenv('TRADING_ENABLED', 'true').lower() == 'true'

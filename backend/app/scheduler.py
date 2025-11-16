@@ -48,17 +48,35 @@ def init_scheduler():
         mode = "REAL TRADING" if (kraken_key and kraken_secret) else "PAPER TRADING"
         logger.info(f"✅ Bot inicializado en modo {mode}")
         
-        # Ejecutar ciclo cada hora en punto en hora de Charlotte, NC (Eastern Time)
+        # Get interval in hours from config
+        interval_hours = config.TRADING_INTERVAL_HOURS
+        
+        # Build cron expression for every N hours on the hour
+        # Examples:
+        # 1 hour: */1 (every hour: 19:00, 20:00, 21:00...)
+        # 2 hours: */2 (every 2 hours: 20:00, 22:00, 00:00...)
+        # 4 hours: */4 (every 4 hours: 20:00, 00:00, 04:00...)
+        # 24 hours: 0 (once per day at midnight: 00:00)
+        
+        if interval_hours == 24:
+            # Special case: once per day at midnight
+            hour_expr = '0'
+            desc = 'daily at midnight (00:00 ET)'
+        else:
+            # Every N hours on the hour
+            hour_expr = f'*/{interval_hours}'
+            desc = f'every {interval_hours} hour(s) on the hour (ET)'
+        
         scheduler.add_job(
             run_trading_cycle,
-            CronTrigger(minute=0, timezone='America/New_York'),  # Charlotte, NC timezone
+            CronTrigger(minute=0, hour=hour_expr, timezone='America/New_York'),
             id='trading_cycle',
-            name='Trading cycle - hourly on the hour (ET)',
+            name=f'Trading cycle - {desc}',
             replace_existing=True
         )
         
         scheduler.start()
-        logger.info(f"✅ Scheduler iniciado - Ciclo de trading cada hora en punto (XX:00 ET - Charlotte, NC)")
+        logger.info(f"✅ Scheduler iniciado - Ciclo de trading {desc} (Charlotte, NC)")
         
     except Exception as e:
         logger.warning(f"⚠️  Scheduler deshabilitado: {e}")
