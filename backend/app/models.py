@@ -81,5 +81,6 @@ class TradingCycle(Base):
     # Execution details
     execution_time_ms = Column(Integer, nullable=True)  # milliseconds
     trading_mode = Column(String)  # PAPER, REAL
+    trigger = Column(String, nullable=True)  # manual, scheduled
     error_message = Column(Text, nullable=True)
 

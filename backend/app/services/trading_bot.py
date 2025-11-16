@@ -233,7 +233,7 @@ class TradingBot:
                 self.telegram.send_error_alert(str(e))
             return False
     
-    async def run_cycle(self) -> Dict:
+    async def run_cycle(self, trigger: str = "scheduled") -> Dict:
         """Execute one trading cycle"""
         import time
         from ..models import TradingCycle
@@ -264,7 +264,7 @@ class TradingBot:
                 logger.warning("⚠️  Análisis falló - sin datos")
                 cycle_data['error_message'] = 'Analysis failed - no data'
                 cycle_data['action'] = 'ERROR'
-                self._save_cycle(cycle_data, int((time.time() - start_time) * 1000))
+                self._save_cycle(cycle_data, int((time.time() - start_time) * 1000), trigger)
                 return {'success': False, 'reason': 'Analysis failed'}
             
             # Update cycle data from analysis
@@ -333,7 +333,7 @@ class TradingBot:
             
             # Save cycle to database
             execution_time = int((time.time() - start_time) * 1000)
-            self._save_cycle(cycle_data, execution_time)
+            self._save_cycle(cycle_data, execution_time, trigger)
             
             return {'success': True, 'analysis': analysis}
         
@@ -341,13 +341,13 @@ class TradingBot:
             logger.error(f"❌ Error en ciclo de trading: {e}")
             cycle_data['error_message'] = str(e)
             cycle_data['action'] = 'ERROR'
-            self._save_cycle(cycle_data, int((time.time() - start_time) * 1000))
+            self._save_cycle(cycle_data, int((time.time() - start_time) * 1000), trigger)
             
             if self.telegram:
                 self.telegram.send_error_alert(str(e), 'HIGH')
             return {'success': False, 'error': str(e)}
     
-    def _save_cycle(self, cycle_data: Dict, execution_time_ms: int):
+    def _save_cycle(self, cycle_data: Dict, execution_time_ms: int, trigger: str = "scheduled"):
         """Save trading cycle to database"""
         try:
             from ..models import TradingCycle
@@ -368,12 +368,13 @@ class TradingBot:
                 trade_id=cycle_data['trade_id'],
                 execution_time_ms=execution_time_ms,
                 trading_mode=cycle_data['trading_mode'],
+                trigger=trigger,
                 error_message=cycle_data['error_message']
             )
             db.add(cycle)
             db.commit()
             db.close()
-            logger.info(f"💾 Ciclo guardado en DB ({execution_time_ms}ms)")
+            logger.info(f"💾 Ciclo guardado en DB ({execution_time_ms}ms, trigger={trigger})")
         except Exception as e:
             logger.error(f"Error guardando ciclo en DB: {e}")
     

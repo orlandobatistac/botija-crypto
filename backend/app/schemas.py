@@ -84,6 +84,7 @@ class TradingCycleCreate(TradingCycleBase):
     ai_reason: Optional[str] = None
     trade_id: Optional[str] = None
     execution_time_ms: Optional[int] = None
+    trigger: Optional[str] = None
     error_message: Optional[str] = None
 
 class TradingCycle(TradingCycleBase):
@@ -92,6 +93,7 @@ class TradingCycle(TradingCycleBase):
     ai_reason: Optional[str] = None
     trade_id: Optional[str] = None
     execution_time_ms: Optional[int] = None
+    trigger: Optional[str] = None
     error_message: Optional[str] = None
     
     class Config:

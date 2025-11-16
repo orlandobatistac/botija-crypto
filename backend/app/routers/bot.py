@@ -157,7 +157,7 @@ async def run_trading_cycle(
         last_cycle_info["error"] = None
         last_cycle_info["trigger"] = "manual"
         
-        result = await bot.run_cycle()
+        result = await bot.run_cycle(trigger="manual")
         
         # Update last cycle info - success
         last_cycle_info["status"] = "success"
