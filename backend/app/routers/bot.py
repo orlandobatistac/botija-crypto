@@ -10,8 +10,9 @@ from ..database import get_db
 from ..services import TradingBot, TechnicalIndicators
 from ..services.modes.factory import get_trading_engine
 from ..services.modes.paper import PaperTradingEngine
-from ..scheduler import get_scheduler_status
+from ..scheduler import get_scheduler_status, last_cycle_info
 from ..services.log_handler import get_log_handler
+from datetime import datetime
 
 router = APIRouter(
     prefix="/api/v1/bot",
@@ -150,13 +151,26 @@ async def run_trading_cycle(
 ):
     """Execute one trading cycle manually"""
     try:
+        # Update last cycle info - start
+        last_cycle_info["timestamp"] = datetime.now().isoformat()
+        last_cycle_info["status"] = "running"
+        last_cycle_info["error"] = None
+        
         result = await bot.run_cycle()
+        
+        # Update last cycle info - success
+        last_cycle_info["status"] = "success"
+        
         return {
             "success": True,
             "message": "Trading cycle executed successfully",
             "result": result
         }
     except Exception as e:
+        # Update last cycle info - error
+        last_cycle_info["status"] = "error"
+        last_cycle_info["error"] = str(e)
+        
         return {
             "success": False,
             "message": f"Error executing cycle: {str(e)}"

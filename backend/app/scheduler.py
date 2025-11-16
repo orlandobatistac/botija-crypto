@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 trading_bot = None
 
+# Track last cycle execution
+last_cycle_info = {
+    "timestamp": None,
+    "status": "pending",
+    "error": None
+}
+
 def init_scheduler():
     """Inicializa el scheduler con el bot de trading"""
     global trading_bot
@@ -84,17 +91,30 @@ def init_scheduler():
 
 def run_trading_cycle():
     """Ejecuta un ciclo completo de trading"""
+    global last_cycle_info
+    
     try:
         now = datetime.now()
         logger.info(f"🔄 Iniciando ciclo de trading - {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Update cycle start
+        last_cycle_info["timestamp"] = now.isoformat()
+        last_cycle_info["status"] = "running"
+        last_cycle_info["error"] = None
         
         # Ejecutar en loop asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(trading_bot.run_cycle())
         
+        # Update cycle success
+        last_cycle_info["status"] = "success"
         logger.info(f"✅ Ciclo de trading completado - {datetime.now().strftime('%H:%M:%S')}")
+        
     except Exception as e:
+        # Update cycle error
+        last_cycle_info["status"] = "error"
+        last_cycle_info["error"] = str(e)
         logger.error(f"❌ Error en ciclo de trading: {e}")
 
 def shutdown_scheduler():
@@ -113,7 +133,11 @@ def get_scheduler_status():
         "jobs": len(scheduler.get_jobs()) if scheduler.running else 0,
         "next_run_time": None,
         "seconds_until_next": 0,
-        "last_result": "pending"
+        "last_cycle": last_cycle_info["timestamp"],
+        "last_cycle_result": {
+            "status": last_cycle_info["status"],
+            "error": last_cycle_info["error"]
+        }
     }
     
     if not scheduler.running:
