@@ -29,7 +29,8 @@ class AISignalValidator:
         try:
             # Calculate additional context
             ema_trend = "ALCISTA" if ema20 > ema50 else "BAJISTA"
-            ema_gap = abs(ema20 - ema50) / ema50 * 100
+            # Avoid division by zero
+            ema_gap = abs(ema20 - ema50) / ema50 * 100 if ema50 > 0 else 0
             
             prompt = f"""
 Eres un trader experto en Bitcoin swing trading. Tu objetivo es generar ganancias consistentes operando cada 1-24 horas.
