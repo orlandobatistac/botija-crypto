@@ -2,7 +2,7 @@
 OpenAI AI signal validation
 """
 
-import openai
+from openai import OpenAI
 import logging
 from typing import Dict
 
@@ -13,7 +13,7 @@ class AISignalValidator:
     
     def __init__(self, api_key: str):
         """Initialize OpenAI client"""
-        openai.api_key = api_key
+        self.client = OpenAI(api_key=api_key)
         self.logger = logger
     
     def get_signal(
@@ -58,7 +58,7 @@ CONFIDENCE: [0-1]
 REASON: [One sentence explanation]
 """
             
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a Bitcoin trading analyst. Provide concise trading signals."},
@@ -68,7 +68,7 @@ REASON: [One sentence explanation]
                 max_tokens=100
             )
             
-            content = response['choices'][0]['message']['content'].strip()
+            content = response.choices[0].message.content.strip()
             
             # Parse response
             signal = 'HOLD'
