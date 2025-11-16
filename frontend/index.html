@@ -232,7 +232,10 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
-                <template x-for="(trade, index) in trades" :key="'trade-' + index">
+                <template
+                  x-for="(trade, index) in trades"
+                  :key="'trade-' + index"
+                >
                   <tr class="hover:bg-gray-700/30 transition-colors">
                     <td
                       class="px-4 py-3 font-mono text-xs text-gray-400"
@@ -248,7 +251,7 @@
                     </td>
                     <td
                       class="px-4 py-3 text-orange-400 font-semibold"
-                      x-text="'$' + parseFloat(trade.entry_price).toFixed(2)"
+                      x-text="trade.entry_price ? '$' + parseFloat(trade.entry_price).toFixed(2) : 'N/A'"
                     ></td>
                     <td
                       class="px-4 py-3 text-blue-400 font-semibold"
@@ -256,7 +259,7 @@
                     ></td>
                     <td
                       class="px-4 py-3 font-mono text-xs"
-                      x-text="parseFloat(trade.quantity).toFixed(8) + ' BTC'"
+                      x-text="trade.quantity ? parseFloat(trade.quantity).toFixed(8) + ' BTC' : 'N/A'"
                     ></td>
                     <td class="px-4 py-3">
                       <span
@@ -632,19 +635,15 @@
                   usd_balance: parseFloat(dashboard.usd_balance) || 0,
                 };
 
-                // 3. Fetch trades if paper mode
-                if (dashboard.mode === "PAPER") {
-                  try {
-                    const tradesResp = await fetch("/api/v1/paper/trades");
-                    if (tradesResp.ok) {
-                      const tradesData = await tradesResp.json();
-                      this.trades = Array.isArray(tradesData.trades)
-                        ? tradesData.trades
-                        : [];
-                    }
-                  } catch (e) {
-                    console.warn("Error fetching trades:", e);
+                // 3. Fetch all trades
+                try {
+                  const tradesResp = await fetch("/api/v1/trades");
+                  if (tradesResp.ok) {
+                    const tradesData = await tradesResp.json();
+                    this.trades = Array.isArray(tradesData) ? tradesData : [];
                   }
+                } catch (e) {
+                  console.warn("Error fetching trades:", e);
                 }
               }
 
