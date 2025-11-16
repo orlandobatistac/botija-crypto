@@ -572,6 +572,7 @@
           logs: [],
           logLevel: "",
           autoRefreshLogs: false,
+          lastServerSync: Date.now(), // Track last sync to prevent drift
 
           get timeSinceLastCycle() {
             if (!this.schedulerStatus.last_cycle) return "-";
@@ -649,18 +650,30 @@
             await this.fetchLogs();
             await this.fetchCycles();
 
-            // Refresh status every 30 seconds from backend
-            setInterval(() => this.refreshStatus(), 30000);
+            // Refresh status every 10 seconds from backend (more frequent for accurate countdown)
+            setInterval(() => this.refreshStatus(), 10000);
 
             // Refresh cycles every 10 seconds
             setInterval(() => this.fetchCycles(), 10000);
 
-            // Local countdown decrement (every second)
+            // Local countdown decrement (every second) with auto-refresh at 0
             setInterval(() => {
               if (this.schedulerCountdown > 0) {
                 this.schedulerCountdown--;
+              } else if (this.schedulerCountdown === 0) {
+                // Auto-refresh when countdown reaches 0 to get new cycle time
+                this.refreshStatus();
               }
             }, 1000);
+
+            // Validation: force sync if no server update for 30+ seconds
+            setInterval(() => {
+              const timeSinceSync = (Date.now() - this.lastServerSync) / 1000;
+              if (timeSinceSync > 30) {
+                console.warn(`[SCHEDULER] No sync for ${timeSinceSync.toFixed(0)}s, forcing refresh`);
+                this.refreshStatus();
+              }
+            }, 5000);
           },
 
           async refreshStatus() {
@@ -681,15 +694,21 @@
                   schedulerData.last_cycle_result
                 );
 
-                // Update countdown - this is the key line
+                // Update countdown - anti-flicker: only update if significant difference
                 if (typeof schedulerData.seconds_until_next === "number") {
-                  this.schedulerCountdown = Math.max(
-                    0,
-                    schedulerData.seconds_until_next
-                  );
-                  console.log(
-                    `[SCHEDULER] Updated countdown: ${this.schedulerCountdown}s, next_run: ${schedulerData.next_run_time}`
-                  );
+                  const diff = Math.abs(this.schedulerCountdown - schedulerData.seconds_until_next);
+                  // Only update if difference > 2 seconds or countdown is at 0
+                  if (diff > 2 || this.schedulerCountdown === 0) {
+                    this.schedulerCountdown = Math.max(
+                      0,
+                      schedulerData.seconds_until_next
+                    );
+                    console.log(
+                      `[SCHEDULER] Updated countdown: ${this.schedulerCountdown}s, next_run: ${schedulerData.next_run_time}`
+                    );
+                  }
+                  // Track last successful sync
+                  this.lastServerSync = Date.now();
                 }
               }
 
