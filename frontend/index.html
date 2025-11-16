@@ -80,7 +80,7 @@
             </div>
             <div
               class="text-2xl font-bold text-orange-400 mb-1"
-              x-text="botStatus.btc_balance.toFixed(8)"
+              x-text="formatBTC(botStatus.btc_balance)"
             ></div>
             <div class="text-xs text-gray-500">Bitcoin holdings</div>
           </div>
@@ -95,7 +95,7 @@
             </div>
             <div
               class="text-2xl font-bold text-blue-400 mb-1"
-              x-text="'$' + botStatus.usd_balance.toFixed(2)"
+              x-text="formatUSD(botStatus.usd_balance)"
             ></div>
             <div class="text-xs text-gray-500">Available to trade</div>
           </div>
@@ -110,7 +110,7 @@
             </div>
             <div
               class="text-2xl font-bold text-purple-400 mb-1"
-              x-text="'$' + totalPortfolio.toFixed(2)"
+              x-text="formatUSD(totalPortfolio)"
             ></div>
             <div class="text-xs text-purple-300/70">Portfolio value</div>
           </div>
@@ -246,22 +246,22 @@
                     <td class="px-4 py-3">
                       <div
                         class="font-semibold text-orange-400"
-                        x-text="'$' + cycle.btc_price.toFixed(2)"
+                        x-text="formatUSD(cycle.btc_price)"
                       ></div>
                     </td>
                     <td class="px-4 py-3">
                       <div class="text-xs space-y-1">
                         <div>
                           <span class="text-gray-500">EMA20:</span>
-                          <span x-text="cycle.ema20.toFixed(2)"></span>
+                          <span x-text="formatNumber(cycle.ema20, 2)"></span>
                         </div>
                         <div>
                           <span class="text-gray-500">EMA50:</span>
-                          <span x-text="cycle.ema50.toFixed(2)"></span>
+                          <span x-text="formatNumber(cycle.ema50, 2)"></span>
                         </div>
                         <div>
                           <span class="text-gray-500">RSI:</span>
-                          <span x-text="cycle.rsi14.toFixed(2)"></span>
+                          <span x-text="formatNumber(cycle.rsi14, 2)"></span>
                         </div>
                       </div>
                     </td>
@@ -312,14 +312,14 @@
                         <div>
                           <span
                             class="text-orange-400"
-                            x-text="cycle.btc_balance.toFixed(8)"
+                            x-text="formatBTC(cycle.btc_balance)"
                           ></span>
                           BTC
                         </div>
                         <div>
                           <span
                             class="text-blue-400"
-                            x-text="'$' + cycle.usd_balance.toFixed(2)"
+                            x-text="formatUSD(cycle.usd_balance)"
                           ></span>
                           USD
                         </div>
@@ -409,22 +409,22 @@
                       </span>
                     </td>
                     <td
-                      class="px-4 py-3 text-orange-400 font-semibold"
-                      x-text="trade.entry_price ? '$' + parseFloat(trade.entry_price).toFixed(2) : 'N/A'"
+                      class="px-4 py-3 text-green-400 font-semibold"
+                      x-text="trade.entry_price ? formatUSD(trade.entry_price) : 'N/A'"
                     ></td>
                     <td
                       class="px-4 py-3 text-blue-400 font-semibold"
-                      x-text="trade.exit_price ? '$' + parseFloat(trade.exit_price).toFixed(2) : '-'"
+                      x-text="trade.exit_price ? formatUSD(trade.exit_price) : '-'"
                     ></td>
                     <td
                       class="px-4 py-3 font-mono text-xs"
-                      x-text="trade.quantity ? parseFloat(trade.quantity).toFixed(8) + ' BTC' : 'N/A'"
+                      x-text="trade.quantity ? formatBTC(trade.quantity) + ' BTC' : 'N/A'"
                     ></td>
                     <td class="px-4 py-3">
                       <span
                         :class="trade.profit_loss > 0 ? 'text-green-400' : trade.profit_loss < 0 ? 'text-red-400' : 'text-gray-400'"
                         class="font-bold"
-                        x-text="trade.profit_loss ? '$' + parseFloat(trade.profit_loss).toFixed(2) : '-'"
+                        x-text="trade.profit_loss ? formatUSD(trade.profit_loss) : '-'"
                       >
                       </span>
                     </td>
@@ -615,6 +615,27 @@
               second: "2-digit",
               hour12: true,
             });
+          },
+
+          // Format number with commas for thousands (e.g., 1,234.56)
+          formatNumber(num, decimals = 2) {
+            if (num == null || isNaN(num)) return '0.00';
+            return parseFloat(num).toLocaleString('en-US', {
+              minimumFractionDigits: decimals,
+              maximumFractionDigits: decimals
+            });
+          },
+
+          // Format USD currency with $ and commas
+          formatUSD(amount) {
+            if (amount == null || isNaN(amount)) return '$0.00';
+            return '$' + this.formatNumber(amount, 2);
+          },
+
+          // Format BTC with 8 decimals
+          formatBTC(amount) {
+            if (amount == null || isNaN(amount)) return '0.00000000';
+            return this.formatNumber(amount, 8);
           },
 
           get totalPortfolio() {
