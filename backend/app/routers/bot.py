@@ -135,7 +135,26 @@ async def run_trading_cycle(
     db: Session = Depends(get_db),
     bot: TradingBot = Depends(get_trading_bot)
 ):
-    """Execute one trading cycle"""
+    """Execute one trading cycle manually"""
+    try:
+        result = await bot.run_cycle()
+        return {
+            "success": True,
+            "message": "Trading cycle executed successfully",
+            "result": result
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error executing cycle: {str(e)}"
+        }
+
+@router.post("/cycle/manual")
+async def run_manual_cycle(
+    db: Session = Depends(get_db),
+    bot: TradingBot = Depends(get_trading_bot)
+):
+    """Execute one trading cycle manually (alias)"""
     result = await bot.run_cycle()
     
     if result.get('success') and 'analysis' in result:
