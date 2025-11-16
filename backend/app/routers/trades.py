@@ -13,9 +13,19 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=list[schemas.Trade])
-async def get_trades(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    """Get all trades with pagination"""
-    trades = db.query(models.Trade).offset(skip).limit(limit).all()
+async def get_trades(
+    skip: int = 0, 
+    limit: int = 100, 
+    mode: str = None,  # Filter by PAPER or REAL
+    db: Session = Depends(get_db)
+):
+    """Get all trades with pagination and optional mode filter"""
+    query = db.query(models.Trade).order_by(models.Trade.created_at.desc())
+    
+    if mode:
+        query = query.filter(models.Trade.trading_mode == mode.upper())
+    
+    trades = query.offset(skip).limit(limit).all()
     return trades
 
 @router.get("/{trade_id}", response_model=schemas.Trade)

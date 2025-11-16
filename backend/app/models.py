@@ -18,6 +18,7 @@ class Trade(Base):
     quantity = Column(Float)
     profit_loss = Column(Float, nullable=True)
     status = Column(String)  # OPEN, CLOSED, CANCELLED
+    trading_mode = Column(String, default="REAL")  # PAPER, REAL
     trailing_stop = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     closed_at = Column(DateTime(timezone=True), nullable=True)

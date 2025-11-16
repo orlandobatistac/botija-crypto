@@ -12,6 +12,7 @@ class TradeBase(BaseModel):
     entry_price: float
     quantity: float
     status: str
+    trading_mode: str = "REAL"
 
 class TradeCreate(TradeBase):
     pass
