@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 # Import scheduler
 from .scheduler import init_scheduler, shutdown_scheduler
+from .services.log_handler import setup_log_handler
 
 # Configure logging
 logging.basicConfig(
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    setup_log_handler()  # Setup in-memory log handler
     init_scheduler()
     logger.info("🚀 Kraken AI Trading Bot iniciado")
     yield

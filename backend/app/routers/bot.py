@@ -2,7 +2,7 @@
 Bot router for Kraken AI Trading Bot
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 import os
 from .. import models, schemas
@@ -11,6 +11,7 @@ from ..services import TradingBot, TechnicalIndicators
 from ..services.modes.factory import get_trading_engine
 from ..services.modes.paper import PaperTradingEngine
 from ..scheduler import get_scheduler_status
+from ..services.log_handler import get_log_handler
 
 router = APIRouter(
     prefix="/api/v1/bot",
@@ -211,3 +212,16 @@ async def get_indicators(pair: str = "XBTUSDT", bot: TradingBot = Depends(get_tr
 async def get_scheduler_info():
     """Get scheduler status and next cycle info"""
     return get_scheduler_status()
+
+@router.get("/logs")
+async def get_logs(
+    limit: int = Query(100, description="Maximum number of logs to return"),
+    level: str | None = Query(None, description="Filter by log level (INFO, WARNING, ERROR)")
+):
+    """Get recent application logs"""
+    handler = get_log_handler()
+    logs = handler.get_logs(limit=limit, level=level)
+    return {
+        "logs": logs,
+        "total": len(logs)
+    }
