@@ -27,45 +27,61 @@ class AISignalValidator:
     ) -> Dict:
         """Get AI signal for trading decision"""
         try:
+            # Calculate additional context
+            ema_trend = "ALCISTA" if ema20 > ema50 else "BAJISTA"
+            ema_gap = abs(ema20 - ema50) / ema50 * 100
+            
             prompt = f"""
-Analyze the following Bitcoin trading data and provide a trading signal.
+Eres un trader experto en Bitcoin swing trading. Tu objetivo es generar ganancias consistentes operando cada 1-24 horas.
 
-Current Data:
-- Current BTC Price: ${price:,.2f}
+DATOS ACTUALES:
+- Precio BTC: ${price:,.2f}
 - EMA20: ${ema20:,.2f}
 - EMA50: ${ema50:,.2f}
+- Gap EMA: {ema_gap:.2f}%
+- Tendencia: {ema_trend}
 - RSI14: {rsi:.2f}
-- BTC Balance: {btc_balance:.8f}
-- USD Balance: ${usd_balance:,.2f}
+- Balance BTC: {btc_balance:.8f}
+- Balance USD: ${usd_balance:,.2f}
 
-Trading Rules:
-1. BUY signal only if:
-   - EMA20 > EMA50
-   - RSI between 45-60
-   - USD balance >= $65
-   - No existing BTC position
+ESTRATEGIA SWING TRADING:
+Objetivo: Capturar movimientos del 2-8% cada operación, acumulando ganancias mensuales del 15-30%.
 
-2. SELL signal if:
-   - EMA20 < EMA50 AND RSI < 40
-   - Or if profit target reached
+SEÑAL BUY (comprar para swing):
+- Tendencia ALCISTA (EMA20 > EMA50) con momentum
+- RSI entre 40-65 (no sobrecomprado)
+- Confirmación de rebote o inicio de tendencia alcista
+- Evitar comprar en máximos históricos recientes
 
-3. HOLD signal if none of above conditions met
+SEÑAL SELL (tomar ganancias):
+- Indicios de reversión de tendencia
+- RSI > 70 (sobrecomprado) o señales de debilidad
+- Trailing stop manejará ventas automáticas por caída
 
-Respond with ONLY one word: BUY, SELL, or HOLD
-Also provide a confidence score (0-1) in the format:
-SIGNAL: [SIGNAL]
-CONFIDENCE: [0-1]
-REASON: [One sentence explanation]
+SEÑAL HOLD:
+- Condiciones no claras o mercado lateral
+- Mejor esperar oportunidad con mayor probabilidad
+
+INSTRUCCIONES:
+Analiza los datos con criterio de trader profesional. Prioriza:
+1. Protección de capital (no entrar en caídas)
+2. Timing óptimo (esperar confirmaciones)
+3. Gestión de riesgo (solo trades con buena relación riesgo/recompensa)
+
+Responde en formato:
+SIGNAL: BUY/SELL/HOLD
+CONFIDENCE: [0.0-1.0]
+REASON: [Explicación técnica breve del por qué]
 """
             
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",  # Mejor análisis que gpt-3.5-turbo
                 messages=[
-                    {"role": "system", "content": "You are a Bitcoin trading analyst. Provide concise trading signals."},
+                    {"role": "system", "content": "Eres un trader profesional especializado en Bitcoin swing trading. Generas señales precisas y rentables basadas en análisis técnico."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
-                max_tokens=100
+                temperature=0.5,  # Balance entre consistencia y adaptabilidad
+                max_tokens=150
             )
             
             content = response.choices[0].message.content.strip()
