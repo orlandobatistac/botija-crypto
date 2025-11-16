@@ -37,8 +37,9 @@ def init_database():
         from app.database import SessionLocal
         db = SessionLocal()
         
-        existing_status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
-        if not existing_status:
+        # Check if any record exists
+        existing_count = db.query(BotStatus).count()
+        if existing_count == 0:
             print("\n📝 Creando registro inicial de bot_status...")
             initial_status = BotStatus(
                 is_running=False,
@@ -51,7 +52,7 @@ def init_database():
             db.commit()
             print("✅ Bot status inicial creado")
         else:
-            print(f"\n✅ Bot status ya existe (ID: {existing_status.id})")
+            print(f"\n✅ Bot status ya existe ({existing_count} registro(s))")
         
         db.close()
         
