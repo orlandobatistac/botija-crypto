@@ -559,7 +559,7 @@
             last_cycle_result: {
               status: "pending",
               error: null,
-              trigger: null
+              trigger: null,
             },
           },
           lastUpdate: "Never",
@@ -625,10 +625,16 @@
               if (schedulerResp.ok) {
                 const schedulerData = await schedulerResp.json();
                 this.schedulerStatus = schedulerData;
-                
+
                 console.log("[SCHEDULER] Full data:", schedulerData);
-                console.log("[SCHEDULER] Last cycle:", schedulerData.last_cycle);
-                console.log("[SCHEDULER] Last cycle result:", schedulerData.last_cycle_result);
+                console.log(
+                  "[SCHEDULER] Last cycle:",
+                  schedulerData.last_cycle
+                );
+                console.log(
+                  "[SCHEDULER] Last cycle result:",
+                  schedulerData.last_cycle_result
+                );
 
                 // Update countdown - this is the key line
                 if (typeof schedulerData.seconds_until_next === "number") {
