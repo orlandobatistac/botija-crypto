@@ -39,7 +39,9 @@ def init_scheduler():
             telegram_token=telegram_token,
             telegram_chat_id=telegram_chat_id,
             trade_amount=config.TRADE_AMOUNT_USD,
+            trade_amount_percent=config.TRADE_AMOUNT_PERCENT,
             min_balance=config.MIN_BALANCE_USD,
+            min_balance_percent=config.MIN_BALANCE_PERCENT,
             trailing_stop_pct=config.TRAILING_STOP_PERCENTAGE
         )
         

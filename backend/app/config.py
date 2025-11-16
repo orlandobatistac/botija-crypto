@@ -22,8 +22,11 @@ class Config:
     TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
     
     # Trading Parameters
-    TRADE_AMOUNT_USD = float(os.getenv('TRADE_AMOUNT_USD', 100))
-    MIN_BALANCE_USD = float(os.getenv('MIN_BALANCE_USD', 65))
+    # Trading amounts - can use fixed USD or percentage
+    TRADE_AMOUNT_USD = float(os.getenv('TRADE_AMOUNT_USD', 0))  # 0 = use percentage
+    TRADE_AMOUNT_PERCENT = float(os.getenv('TRADE_AMOUNT_PERCENT', 10))  # 10% default
+    MIN_BALANCE_USD = float(os.getenv('MIN_BALANCE_USD', 0))  # 0 = use percentage
+    MIN_BALANCE_PERCENT = float(os.getenv('MIN_BALANCE_PERCENT', 20))  # 20% default
     TRAILING_STOP_PERCENTAGE = float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99))
     
     # Bot Parameters

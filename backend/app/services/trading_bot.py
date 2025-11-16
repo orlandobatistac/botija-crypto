@@ -26,8 +26,10 @@ class TradingBot:
         openai_api_key: str,
         telegram_token: str,
         telegram_chat_id: str,
-        trade_amount: float = 100,
-        min_balance: float = 65,
+        trade_amount: float = 0,  # 0 = use percentage
+        trade_amount_percent: float = 10,  # 10% default
+        min_balance: float = 0,  # 0 = use percentage
+        min_balance_percent: float = 20,  # 20% default
         trailing_stop_pct: float = 0.99
     ):
         """Initialize trading bot"""
@@ -37,12 +39,26 @@ class TradingBot:
         self.telegram = TelegramAlerts(telegram_token, telegram_chat_id) if telegram_token else None
         
         self.trade_amount = trade_amount
+        self.trade_amount_percent = trade_amount_percent
         self.min_balance = min_balance
+        self.min_balance_percent = min_balance_percent
         self.trailing_stop_pct = trailing_stop_pct
         
         self.is_running = False
         self.active_trade: Optional[Dict] = None
         self.logger = logger
+    
+    def _calculate_trade_amount(self, usd_balance: float) -> float:
+        """Calculate trade amount based on config (fixed or percentage)"""
+        if self.trade_amount > 0:
+            return self.trade_amount  # Use fixed amount
+        return usd_balance * (self.trade_amount_percent / 100)  # Use percentage
+    
+    def _calculate_min_balance(self, usd_balance: float) -> float:
+        """Calculate minimum balance based on config (fixed or percentage)"""
+        if self.min_balance > 0:
+            return self.min_balance  # Use fixed amount
+        return usd_balance * (self.min_balance_percent / 100)  # Use percentage
     
     async def analyze_market(self) -> Dict:
         """Analyze current market conditions"""
@@ -92,6 +108,10 @@ class TradingBot:
                 # Mock AI signal for paper trading
                 ai_signal = {'signal': 'HOLD', 'confidence': 0.5}
             
+            # Calculate dynamic amounts
+            trade_amount = self._calculate_trade_amount(usd_balance)
+            min_balance_required = self._calculate_min_balance(usd_balance)
+            
             return {
                 'timestamp': datetime.now().isoformat(),
                 'current_price': current_price,
@@ -99,9 +119,11 @@ class TradingBot:
                 'usd_balance': usd_balance,
                 'tech_signals': tech_signals,
                 'ai_signal': ai_signal,
+                'trade_amount': trade_amount,
+                'min_balance_required': min_balance_required,
                 'should_buy': (
                     ai_signal['signal'] == 'BUY' and
-                    usd_balance >= self.min_balance and
+                    usd_balance >= (min_balance_required + trade_amount) and
                     btc_balance == 0
                 ),
                 'should_sell': (
@@ -120,7 +142,8 @@ class TradingBot:
         """Execute a buy order"""
         try:
             current_price = analysis['current_price']
-            quantity = self.trade_amount / current_price
+            trade_amount = analysis.get('trade_amount', self.trade_amount)
+            quantity = trade_amount / current_price
             
             self.logger.info(f"Executing BUY: {quantity:.8f} BTC at ${current_price:,.2f}")
             

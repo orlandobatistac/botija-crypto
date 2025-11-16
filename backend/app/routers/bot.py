@@ -31,8 +31,10 @@ def get_trading_bot() -> TradingBot:
             openai_api_key=os.getenv('OPENAI_API_KEY', ''),
             telegram_token=os.getenv('TELEGRAM_TOKEN', ''),
             telegram_chat_id=os.getenv('TELEGRAM_CHAT_ID', ''),
-            trade_amount=float(os.getenv('TRADE_AMOUNT_USD', 100)),
-            min_balance=float(os.getenv('MIN_BALANCE_USD', 65)),
+            trade_amount=float(os.getenv('TRADE_AMOUNT_USD', 0)),
+            trade_amount_percent=float(os.getenv('TRADE_AMOUNT_PERCENT', 10)),
+            min_balance=float(os.getenv('MIN_BALANCE_USD', 0)),
+            min_balance_percent=float(os.getenv('MIN_BALANCE_PERCENT', 20)),
             trailing_stop_pct=float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99))
         )
     return trading_bot
