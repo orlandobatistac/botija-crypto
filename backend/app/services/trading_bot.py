@@ -77,13 +77,15 @@ class TradingBot:
                 self.logger.warning("No price data available")
                 return {}
             
-            # Get OHLC data for indicators (use kraken or mock data)
+            # Get OHLC data for indicators
+            from ..config import Config
             if self.kraken:
-                from ..config import Config
+                # Use authenticated Kraken client when available
                 ohlc_data = self.kraken.get_ohlc(interval=Config.KRAKEN_OHLC_INTERVAL)
             else:
-                # Mock OHLC for paper trading
-                ohlc_data = [[0, 0, 0, 0, current_price] for _ in range(50)]
+                # Use public Kraken OHLC (no API key required) for PAPER mode
+                public_client = KrakenClient(api_key="", api_secret="")
+                ohlc_data = public_client.get_ohlc(interval=Config.KRAKEN_OHLC_INTERVAL)
             
             if not ohlc_data:
                 self.logger.warning("No OHLC data available")
