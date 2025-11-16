@@ -153,6 +153,12 @@
                 x-text="schedulerStatus.last_cycle_result?.status || 'pending'"
               ></span>
               <span
+                x-show="schedulerStatus.last_cycle_result?.trigger"
+                :class="schedulerStatus.last_cycle_result?.trigger === 'manual' ? 'bg-blue-600' : 'bg-purple-600'"
+                class="px-2 py-1 rounded text-xs font-bold capitalize"
+                x-text="schedulerStatus.last_cycle_result?.trigger"
+              ></span>
+              <span
                 class="text-xs text-gray-500"
                 x-text="timeSinceLastCycle"
               ></span>
@@ -552,8 +558,9 @@
             last_cycle: null,
             last_cycle_result: {
               status: "pending",
-              error: null
-            }
+              error: null,
+              trigger: null
+            },
           },
           lastUpdate: "Never",
           manualCycleRunning: false,

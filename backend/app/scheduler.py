@@ -21,7 +21,8 @@ trading_bot = None
 last_cycle_info = {
     "timestamp": None,
     "status": "pending",
-    "error": None
+    "error": None,
+    "trigger": None  # "manual" or "scheduled"
 }
 
 def init_scheduler():
@@ -101,6 +102,7 @@ def run_trading_cycle():
         last_cycle_info["timestamp"] = now.isoformat()
         last_cycle_info["status"] = "running"
         last_cycle_info["error"] = None
+        last_cycle_info["trigger"] = "scheduled"
         
         # Ejecutar en loop asyncio
         loop = asyncio.new_event_loop()
@@ -136,7 +138,8 @@ def get_scheduler_status():
         "last_cycle": last_cycle_info["timestamp"],
         "last_cycle_result": {
             "status": last_cycle_info["status"],
-            "error": last_cycle_info["error"]
+            "error": last_cycle_info["error"],
+            "trigger": last_cycle_info["trigger"]
         }
     }
     

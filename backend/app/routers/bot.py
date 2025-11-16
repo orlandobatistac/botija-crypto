@@ -155,6 +155,7 @@ async def run_trading_cycle(
         last_cycle_info["timestamp"] = datetime.now().isoformat()
         last_cycle_info["status"] = "running"
         last_cycle_info["error"] = None
+        last_cycle_info["trigger"] = "manual"
         
         result = await bot.run_cycle()
         
