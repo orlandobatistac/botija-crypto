@@ -37,211 +37,105 @@
 
         <!-- Main Content -->
         <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
-            <!-- Status Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <!-- Top KPIs - Bot Status & Portfolio -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <!-- Bot Status -->
-                <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">Bot Status</div>
-                    <div class="text-3xl font-bold text-green-400"
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-sm font-medium text-gray-400">Bot Status</div>
+                        <span class="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                    </div>
+                    <div class="text-3xl font-bold text-green-400 mb-1"
                         x-text="botStatus.is_running ? 'ACTIVE' : 'INACTIVE'"></div>
-                    <div class="text-xs text-gray-500 mt-2">Last check: <span x-text="lastUpdate"></span></div>
+                    <div class="text-xs text-gray-500">
+                        <span x-text="schedulerStatus.trading_mode || 'PAPER'"></span> mode
+                    </div>
                 </div>
 
                 <!-- BTC Balance -->
-                <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">BTC Balance</div>
-                    <div class="text-3xl font-bold text-orange-400" x-text="botStatus.btc_balance.toFixed(8)"></div>
-                    <div class="text-xs text-gray-500 mt-2">Current amount</div>
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-sm font-medium text-gray-400">BTC Balance</div>
+                        <span class="text-2xl">₿</span>
+                    </div>
+                    <div class="text-2xl font-bold text-orange-400 mb-1" x-text="botStatus.btc_balance.toFixed(8)"></div>
+                    <div class="text-xs text-gray-500">Bitcoin holdings</div>
                 </div>
 
                 <!-- USD Balance -->
-                <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">USD Balance</div>
-                    <div class="text-3xl font-bold text-blue-400" x-text="'$' + botStatus.usd_balance.toFixed(2)"></div>
-                    <div class="text-xs text-gray-500 mt-2">Available for trading</div>
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-sm font-medium text-gray-400">USD Balance</div>
+                        <span class="text-2xl">💵</span>
+                    </div>
+                    <div class="text-2xl font-bold text-blue-400 mb-1" x-text="'$' + botStatus.usd_balance.toFixed(2)"></div>
+                    <div class="text-xs text-gray-500">Available to trade</div>
                 </div>
 
                 <!-- Total Portfolio -->
-                <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                    <div class="text-sm text-gray-400 mb-2">Total Portfolio</div>
-                    <div class="text-3xl font-bold text-purple-400" x-text="'$' + totalPortfolio.toFixed(2)"></div>
-                    <div class="text-xs text-gray-500 mt-2">USD equivalent</div>
+                <div class="bg-gradient-to-br from-purple-900/30 to-gray-900 rounded-xl border border-purple-700/50 p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-sm font-medium text-purple-300">Total Value</div>
+                        <span class="text-2xl">💎</span>
+                    </div>
+                    <div class="text-2xl font-bold text-purple-400 mb-1" x-text="'$' + totalPortfolio.toFixed(2)"></div>
+                    <div class="text-xs text-purple-300/70">Portfolio value</div>
                 </div>
             </div>
 
-            <!-- Scheduler KPI -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">Scheduler Status</h2>
+            <!-- Next Cycle & Manual Control -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <!-- Next Cycle Countdown -->
+                <div class="bg-gradient-to-br from-blue-900/30 to-gray-900 rounded-xl border border-blue-700/50 p-6 shadow-lg">
+                    <div class="text-sm font-medium text-blue-300 mb-3">⏰ Next Trading Cycle</div>
+                    <div class="text-4xl font-bold text-blue-400 mb-2" x-text="formatTime(schedulerCountdown)"></div>
+                    <div class="text-xs text-blue-300/70"
+                        x-text="schedulerStatus.next_run_time ? new Date(schedulerStatus.next_run_time).toLocaleString() : 'Not scheduled'">
+                    </div>
+                </div>
+
+                <!-- Last Cycle Info -->
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 shadow-lg">
+                    <div class="text-sm font-medium text-gray-400 mb-3">📊 Last Cycle</div>
+                    <div class="text-lg font-mono text-gray-200 mb-2"
+                        x-text="schedulerStatus.last_cycle ? new Date(schedulerStatus.last_cycle).toLocaleTimeString() : 'Never'">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span
+                            :class="schedulerStatus.last_cycle_result?.status === 'success' ? 'bg-green-600' : schedulerStatus.last_cycle_result?.status === 'error' ? 'bg-red-600' : 'bg-yellow-600'"
+                            class="px-2 py-1 rounded text-xs font-bold capitalize"
+                            x-text="schedulerStatus.last_cycle_result?.status || 'pending'"></span>
+                        <span class="text-xs text-gray-500" x-text="timeSinceLastCycle"></span>
+                    </div>
+                </div>
+
+                <!-- Manual Control -->
+                <div class="bg-gradient-to-br from-green-900/30 to-gray-900 rounded-xl border border-green-700/50 p-6 shadow-lg flex flex-col justify-center">
                     <button 
                         @click="runManualCycle()" 
                         :disabled="manualCycleRunning"
-                        :class="manualCycleRunning ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
-                        class="px-4 py-2 rounded font-semibold text-sm transition-colors flex items-center gap-2">
-                        <span x-show="!manualCycleRunning">▶️ Run Manual Cycle</span>
+                        :class="manualCycleRunning ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                        class="w-full px-6 py-3 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                        <span x-show="!manualCycleRunning" class="text-lg">▶️ Run Manual Cycle</span>
                         <span x-show="manualCycleRunning" class="flex items-center gap-2">
-                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             Running...
                         </span>
                     </button>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Next Cycle Countdown -->
-                    <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                        <div class="text-sm text-gray-400 mb-2">Next Trading Cycle</div>
-                        <div class="text-3xl font-bold text-blue-400" x-text="formatTime(schedulerCountdown)"></div>
-                        <div class="text-xs text-gray-500 mt-2"
-                            x-text="schedulerStatus.next_run_time ? 'Scheduled: ' + new Date(schedulerStatus.next_run_time).toLocaleTimeString() : 'Not scheduled'">
-                        </div>
-                    </div>
-
-                    <!-- Last Cycle -->
-                    <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                        <div class="text-sm text-gray-400 mb-2">Last Cycle</div>
-                        <div class="text-sm font-mono"
-                            x-text="schedulerStatus.last_cycle ? new Date(schedulerStatus.last_cycle).toLocaleString() : 'Never'">
-                        </div>
-                        <div class="text-xs text-gray-500 mt-2"
-                            x-text="schedulerStatus.last_cycle ? timeSinceLastCycle : '-'"></div>
-                    </div>
-
-                    <!-- Last Cycle Result -->
-                    <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                        <div class="text-sm text-gray-400 mb-2">Result</div>
-                        <span
-                            :class="schedulerStatus.last_cycle_result?.status === 'success' ? 'bg-green-600' : schedulerStatus.last_cycle_result?.status === 'error' ? 'bg-red-600' : 'bg-yellow-600'"
-                            class="px-3 py-1 rounded text-sm font-bold inline-block capitalize"
-                            x-text="schedulerStatus.last_cycle_result?.status || 'pending'"></span>
-                        <div x-show="schedulerStatus.last_cycle_result?.trades_executed > 0"
-                            class="text-xs text-gray-400 mt-2">
-                            <span x-text="'Trades: ' + schedulerStatus.last_cycle_result?.trades_executed"></span>
-                        </div>
-                        <div x-show="schedulerStatus.last_cycle_result?.error" class="text-xs text-red-400 mt-2">
-                            <span x-text="schedulerStatus.last_cycle_result?.error"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Control Panel -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
-                <h2 class="text-xl font-bold mb-6">Control Panel</h2>
-                <div class="flex gap-4">
-                    <button @click="startBot()"
-                        class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition">
-                        ▶ Start Bot
-                    </button>
-                    <button @click="stopBot()"
-                        class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition">
-                        ⏹ Stop Bot
-                    </button>
-                    <button @click="refreshStatus()"
-                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
-                        🔄 Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- Recent Trades -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
-                <h2 class="text-xl font-bold mb-6">Recent Trades</h2>
-                <div x-show="trades.length > 0" class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="border-b border-gray-700">
-                            <tr class="text-gray-400">
-                                <th class="text-left py-3 px-4">Type</th>
-                                <th class="text-left py-3 px-4">Price</th>
-                                <th class="text-left py-3 px-4">Amount</th>
-                                <th class="text-left py-3 px-4">Status</th>
-                                <th class="text-left py-3 px-4">P/L</th>
-                                <th class="text-left py-3 px-4">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="(trade, index) in trades" :key="index">
-                                <tr class="border-b border-gray-700 hover:bg-gray-700/50">
-                                    <td class="py-3 px-4">
-                                        <span :class="trade.type === 'BUY' ? 'text-green-400' : 'text-red-400'"
-                                            x-text="trade.type"></span>
-                                    </td>
-                                    <td class="py-3 px-4" x-text="'$' + parseFloat(trade.price).toFixed(2)"></td>
-                                    <td class="py-3 px-4" x-text="parseFloat(trade.volume).toFixed(8)"></td>
-                                    <td class="py-3 px-4">-</td>
-                                    <td class="py-3 px-4">-</td>
-                                    <td class="py-3 px-4 text-gray-500 text-xs"
-                                        x-text="trade.timestamp ? new Date(trade.timestamp).toLocaleDateString() : '-'"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-                <div x-show="trades.length === 0" class="text-gray-500 text-center py-8">
-                    No trades recorded yet
-                </div>
-            </div>
-
-            <!-- Recent Signals -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold">Recent Signals</h2>
-                    <div x-show="signals.length > 0" class="flex items-center gap-2">
-                        <span class="text-sm text-gray-400">Latest:</span>
-                        <span
-                            :class="signals[0]?.ai_signal === 'BUY' ? 'bg-green-600' : signals[0]?.ai_signal === 'SELL' ? 'bg-red-600' : 'bg-yellow-600'"
-                            class="px-2 py-1 rounded text-xs font-bold" x-text="signals[0]?.ai_signal || '-'"></span>
-                        <span class="text-xs text-gray-500"
-                            x-text="signals[0]?.timestamp ? new Date(signals[0].timestamp).toLocaleTimeString() : ''"></span>
-                    </div>
-                </div>
-                <div x-show="signals.length > 0" class="space-y-4">
-                    <template x-for="signal in signals" :key="signal.id">
-                        <div class="border border-gray-700 rounded p-4 bg-gray-700/30">
-                            <div class="flex justify-between items-start mb-3">
-                                <div>
-                                    <span
-                                        :class="signal.ai_signal === 'BUY' ? 'bg-green-600' : signal.ai_signal === 'SELL' ? 'bg-red-600' : 'bg-yellow-600'"
-                                        class="px-3 py-1 rounded text-sm font-bold" x-text="signal.ai_signal"></span>
-                                </div>
-                                <div class="text-xs text-gray-500" x-text="new Date(signal.timestamp).toLocaleString()">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-3 gap-4 text-sm">
-                                <div>
-                                    <span class="text-gray-400">EMA20:</span>
-                                    <span class="text-white ml-2" x-text="signal.ema20.toFixed(2)"></span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-400">EMA50:</span>
-                                    <span class="text-white ml-2" x-text="signal.ema50.toFixed(2)"></span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-400">RSI14:</span>
-                                    <span class="text-white ml-2" x-text="signal.rsi14.toFixed(2)"></span>
-                                </div>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-gray-600">
-                                <span class="text-gray-400 text-sm">Confidence:</span>
-                                <div class="w-full bg-gray-600 rounded-full h-2 mt-1">
-                                    <div class="bg-green-500 h-2 rounded-full transition-all"
-                                        :style="'width: ' + (signal.confidence * 100) + '%'"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-                <div x-show="signals.length === 0" class="text-gray-500 text-center py-8">
-                    No signals recorded yet
+                    <div class="text-xs text-center text-green-300/70 mt-2">Execute cycle immediately</div>
                 </div>
             </div>
 
             <!-- Trading Cycles History -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6 shadow-lg">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">Trading Cycles History</h2>
-                    <button @click="fetchCycles()" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm font-semibold">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span>📊</span> Trading Cycles History
+                    </h2>
+                    <button @click="fetchCycles()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                         🔄 Refresh
                     </button>
                 </div>
@@ -326,31 +220,33 @@
                 </div>
             </div>
 
-            <!-- Logs Viewer -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
+            <!-- Application Logs -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-lg">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">Application Logs</h2>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span>📝</span> Application Logs
+                    </h2>
                     <div class="flex gap-2">
-                        <select x-model="logLevel" @change="fetchLogs()" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm">
+                        <select x-model="logLevel" @change="fetchLogs()" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm">
                             <option value="">All Levels</option>
                             <option value="INFO">INFO</option>
                             <option value="WARNING">WARNING</option>
                             <option value="ERROR">ERROR</option>
                         </select>
-                        <button @click="fetchLogs()" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm font-semibold">
+                        <button @click="fetchLogs()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                             🔄 Refresh
                         </button>
                         <button @click="toggleAutoRefreshLogs()" 
-                                :class="autoRefreshLogs ? 'bg-blue-600' : 'bg-gray-600'"
-                                class="hover:opacity-80 px-3 py-1 rounded text-sm font-semibold">
+                                :class="autoRefreshLogs ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'"
+                                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                             <span x-show="autoRefreshLogs">⏸️ Pause</span>
                             <span x-show="!autoRefreshLogs">▶️ Auto</span>
                         </button>
                     </div>
                 </div>
-                <div class="bg-gray-900 rounded p-4 font-mono text-xs max-h-96 overflow-y-auto" id="logs-container">
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-xs max-h-96 overflow-y-auto border border-gray-700" id="logs-container">
                     <template x-for="(log, index) in logs" :key="index">
-                        <div class="py-1 border-b border-gray-800 hover:bg-gray-800/50">
+                        <div class="py-1 border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
                             <span class="text-gray-500" x-text="new Date(log.timestamp).toLocaleTimeString()"></span>
                             <span :class="{
                                 'text-blue-400': log.level === 'INFO',
