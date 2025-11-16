@@ -237,6 +237,95 @@
                 </div>
             </div>
 
+            <!-- Trading Cycles History -->
+            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Trading Cycles History</h2>
+                    <button @click="fetchCycles()" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm font-semibold">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-700/50 border-b border-gray-600">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Time</th>
+                                <th class="px-4 py-3 text-left">Price</th>
+                                <th class="px-4 py-3 text-left">Indicators</th>
+                                <th class="px-4 py-3 text-left">AI Signal</th>
+                                <th class="px-4 py-3 text-left">Action</th>
+                                <th class="px-4 py-3 text-left">Balances</th>
+                                <th class="px-4 py-3 text-left">Mode</th>
+                                <th class="px-4 py-3 text-right">Time (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <template x-for="cycle in cycles" :key="cycle.id">
+                                <tr class="hover:bg-gray-700/30 transition-colors">
+                                    <td class="px-4 py-3 text-gray-300">
+                                        <div class="text-xs" x-text="new Date(cycle.timestamp).toLocaleString()"></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-semibold text-orange-400" x-text="'$' + cycle.btc_price.toFixed(2)"></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="text-xs space-y-1">
+                                            <div><span class="text-gray-500">EMA20:</span> <span x-text="cycle.ema20.toFixed(2)"></span></div>
+                                            <div><span class="text-gray-500">EMA50:</span> <span x-text="cycle.ema50.toFixed(2)"></span></div>
+                                            <div><span class="text-gray-500">RSI:</span> <span x-text="cycle.rsi14.toFixed(2)"></span></div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2 py-1 rounded text-xs font-semibold"
+                                                :class="{
+                                                    'bg-green-600': cycle.ai_signal === 'BUY',
+                                                    'bg-red-600': cycle.ai_signal === 'SELL',
+                                                    'bg-gray-600': cycle.ai_signal === 'HOLD'
+                                                }"
+                                                x-text="cycle.ai_signal">
+                                            </span>
+                                            <span class="text-xs text-gray-400" x-text="(cycle.ai_confidence * 100).toFixed(0) + '%'"></span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1 max-w-xs truncate" x-text="cycle.ai_reason" x-show="cycle.ai_reason"></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 rounded text-xs font-bold"
+                                            :class="{
+                                                'bg-green-600': cycle.action === 'BOUGHT',
+                                                'bg-red-600': cycle.action === 'SOLD',
+                                                'bg-yellow-600': cycle.action === 'HOLD',
+                                                'bg-red-800': cycle.action === 'ERROR' || cycle.action.includes('FAILED')
+                                            }"
+                                            x-text="cycle.action">
+                                        </span>
+                                        <div class="text-xs text-gray-500 mt-1" x-text="cycle.trade_id" x-show="cycle.trade_id"></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="text-xs space-y-1">
+                                            <div><span class="text-orange-400" x-text="cycle.btc_balance.toFixed(8)"></span> BTC</div>
+                                            <div><span class="text-blue-400" x-text="'$' + cycle.usd_balance.toFixed(2)"></span> USD</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 rounded text-xs font-semibold"
+                                            :class="cycle.trading_mode === 'PAPER' ? 'bg-blue-600' : 'bg-purple-600'"
+                                            x-text="cycle.trading_mode">
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <span class="text-xs text-gray-400" x-text="cycle.execution_time_ms + 'ms'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div x-show="cycles.length === 0" class="text-gray-500 text-center py-8">
+                        No trading cycles recorded yet
+                    </div>
+                </div>
+            </div>
+
             <!-- Logs Viewer -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
                 <div class="flex justify-between items-center mb-6">
@@ -304,6 +393,7 @@
                 botStatus: { is_running: false, btc_balance: 0, usd_balance: 0 },
                 trades: [],
                 signals: [],
+                cycles: [],
                 schedulerStatus: { running: false, seconds_until_next: 0, next_run_time: null },
                 lastUpdate: 'Never',
                 manualCycleRunning: false,
@@ -336,6 +426,7 @@
                     // Wait for initial status to load
                     await this.refreshStatus();
                     await this.fetchLogs();
+                    await this.fetchCycles();
                     
                     // Refresh status every 30 seconds from backend
                     setInterval(() => this.refreshStatus(), 30000);
@@ -346,6 +437,9 @@
                             this.fetchLogs();
                         }
                     }, 5000);
+                    
+                    // Refresh cycles every 10 seconds
+                    setInterval(() => this.fetchCycles(), 10000);
                     
                     // Local countdown decrement (every second)
                     setInterval(() => {
@@ -450,6 +544,18 @@
                         console.error('Error running manual cycle:', err);
                     } finally {
                         this.manualCycleRunning = false;
+                    }
+                },
+
+                async fetchCycles() {
+                    try {
+                        const response = await fetch('/api/v1/bot/cycles?limit=20');
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.cycles = data || [];
+                        }
+                    } catch (err) {
+                        console.error('Error fetching cycles:', err);
                     }
                 },
 
