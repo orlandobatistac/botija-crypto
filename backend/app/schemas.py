@@ -19,7 +19,7 @@ class TradeCreate(TradeBase):
 
 class Trade(TradeBase):
     id: int
-    trade_id: str
+    trade_id: Optional[str] = None
     exit_price: Optional[float] = None
     profit_loss: Optional[float] = None
     trailing_stop: Optional[float] = None
