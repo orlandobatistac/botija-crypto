@@ -12,6 +12,7 @@ from .technical_indicators import TechnicalIndicators
 from .ai_validator import AISignalValidator
 from .telegram_alerts import TelegramAlerts
 from .trailing_stop import TrailingStop
+from .modes.factory import get_trading_engine
 
 logger = logging.getLogger(__name__)
 
@@ -46,33 +47,50 @@ class TradingBot:
     async def analyze_market(self) -> Dict:
         """Analyze current market conditions"""
         try:
-            # Get price data
-            balance = self.kraken.get_account_balance()
-            btc_balance = float(balance.get('XXBT', 0.0))
-            usd_balance = float(balance.get('ZUSD', 0.0))
+            # Use trading engine factory
+            engine = get_trading_engine()
             
-            # Get OHLC data for indicators
-            ohlc_data = self.kraken.get_ohlc()
+            # Get price data
+            balance = engine.get_balance()
+            btc_balance = balance.get('btc', 0.0)
+            usd_balance = balance.get('usd', 0.0)
+            
+            # Get current price
+            current_price = engine.get_current_price()
+            if not current_price:
+                self.logger.warning("No price data available")
+                return {}
+            
+            # Get OHLC data for indicators (use kraken or mock data)
+            if self.kraken:
+                ohlc_data = self.kraken.get_ohlc()
+            else:
+                # Mock OHLC for paper trading
+                ohlc_data = [[0, 0, 0, 0, current_price] for _ in range(50)]
+            
             if not ohlc_data:
                 self.logger.warning("No OHLC data available")
                 return {}
             
             # Extract closing prices
             closes = [float(candle[4]) for candle in ohlc_data]
-            current_price = closes[-1]
             
             # Calculate technical indicators
             tech_signals = TechnicalIndicators.analyze_signals(closes)
             
-            # Get AI signal
-            ai_signal = self.ai.get_signal(
-                price=current_price,
-                ema20=tech_signals.get('ema20', 0),
-                ema50=tech_signals.get('ema50', 0),
-                rsi=tech_signals.get('rsi14', 0),
-                btc_balance=btc_balance,
-                usd_balance=usd_balance
-            )
+            # Get AI signal (only if AI is available)
+            if self.ai:
+                ai_signal = self.ai.get_signal(
+                    price=current_price,
+                    ema20=tech_signals.get('ema20', 0),
+                    ema50=tech_signals.get('ema50', 0),
+                    rsi=tech_signals.get('rsi14', 0),
+                    btc_balance=btc_balance,
+                    usd_balance=usd_balance
+                )
+            else:
+                # Mock AI signal for paper trading
+                ai_signal = {'signal': 'HOLD', 'confidence': 0.5}
             
             return {
                 'timestamp': datetime.now().isoformat(),
@@ -94,7 +112,8 @@ class TradingBot:
         
         except Exception as e:
             self.logger.error(f"Error analyzing market: {e}")
-            self.telegram.send_error_alert(str(e), 'HIGH')
+            if self.telegram:
+                self.telegram.send_error_alert(str(e), 'HIGH')
             return {}
     
     async def execute_buy(self, analysis: Dict) -> bool:
@@ -217,10 +236,11 @@ class TradingBot:
                     await self.execute_sell(analysis)
                 elif stop_info['distance_to_stop'] < stop_info['stop_percentage'] * 0.1:
                     # Update Telegram when getting close to stop
-                    self.telegram.send_trailing_stop_update(
-                        analysis['current_price'],
-                        stop_info['trailing_stop']
-                    )
+                    if self.telegram:
+                        self.telegram.send_trailing_stop_update(
+                            analysis['current_price'],
+                            stop_info['trailing_stop']
+                        )
             
             # Check for buy signal
             if analysis['should_buy']:
