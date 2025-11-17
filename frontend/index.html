@@ -238,7 +238,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
-                <template x-for="cycle in cycles" :key="cycle.id">
+                <template x-for="cycle in paginatedCycles" :key="cycle.id">
                   <tr class="hover:bg-gray-700/30 transition-colors">
                     <td class="px-4 py-3 text-gray-300">
                       <div class="text-xs" x-text="toET(cycle.timestamp)"></div>
@@ -357,6 +357,39 @@
               class="text-gray-500 text-center py-8"
             >
               No trading cycles recorded yet
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div
+              x-show="cycles.length > 0"
+              class="mt-6 flex items-center justify-between border-t border-gray-700 pt-4"
+            >
+              <div class="text-sm text-gray-400">
+                Showing <span x-text="((cyclesCurrentPage - 1) * cyclesItemsPerPage) + 1"></span> 
+                to <span x-text="Math.min(cyclesCurrentPage * cyclesItemsPerPage, cycles.length)"></span> 
+                of <span x-text="cycles.length"></span> cycles
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  @click="cyclesPrevPage()"
+                  :disabled="cyclesCurrentPage === 1"
+                  :class="cyclesCurrentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600'"
+                  class="px-4 py-2 bg-gray-700 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  ← Previous
+                </button>
+                <div class="text-sm text-gray-400">
+                  Page <span x-text="cyclesCurrentPage"></span> of <span x-text="cyclesTotalPages"></span>
+                </div>
+                <button
+                  @click="cyclesNextPage()"
+                  :disabled="cyclesCurrentPage === cyclesTotalPages"
+                  :class="cyclesCurrentPage === cyclesTotalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600'"
+                  class="px-4 py-2 bg-gray-700 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -556,6 +589,8 @@
           trades: [],
           signals: [],
           cycles: [],
+          cyclesCurrentPage: 1,
+          cyclesItemsPerPage: 10,
           schedulerStatus: {
             running: false,
             seconds_until_next: 0,
@@ -651,6 +686,29 @@
           get totalPortfolio() {
             // Assuming BTC price needs to be fetched
             return this.botStatus.usd_balance;
+          },
+
+          // Pagination for cycles
+          get paginatedCycles() {
+            const start = (this.cyclesCurrentPage - 1) * this.cyclesItemsPerPage;
+            const end = start + this.cyclesItemsPerPage;
+            return this.cycles.slice(start, end);
+          },
+
+          get cyclesTotalPages() {
+            return Math.ceil(this.cycles.length / this.cyclesItemsPerPage);
+          },
+
+          cyclesNextPage() {
+            if (this.cyclesCurrentPage < this.cyclesTotalPages) {
+              this.cyclesCurrentPage++;
+            }
+          },
+
+          cyclesPrevPage() {
+            if (this.cyclesCurrentPage > 1) {
+              this.cyclesCurrentPage--;
+            }
           },
 
           async init() {
@@ -823,7 +881,7 @@
 
           async fetchCycles() {
             try {
-              const response = await fetch("/api/v1/bot/cycles?limit=20");
+              const response = await fetch("/api/v1/bot/cycles?limit=100");
               if (response.ok) {
                 const data = await response.json();
                 this.cycles = data || [];
