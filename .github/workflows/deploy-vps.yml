@@ -29,8 +29,7 @@ jobs:
             git pull origin main
             
             echo "📦 Installing dependencies..."
-            source venv/bin/activate
-            pip install -r backend/requirements.txt --quiet
+            /root/botija-crypto/venv/bin/pip install -r backend/requirements.txt --quiet
             
             echo "🔄 Restarting bot service..."
             systemctl restart botija-crypto
