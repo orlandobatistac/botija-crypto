@@ -282,6 +282,14 @@ class TradingBot:
                 cycle_data['ema20'] = tech.get('ema20', 0)
                 cycle_data['ema50'] = tech.get('ema50', 0)
                 cycle_data['rsi14'] = tech.get('rsi14', 0)
+                # New indicators
+                cycle_data['macd'] = tech.get('macd')
+                cycle_data['macd_signal'] = tech.get('macd_signal')
+                cycle_data['macd_hist'] = tech.get('macd_hist')
+                cycle_data['bb_upper'] = tech.get('bb_upper')
+                cycle_data['bb_lower'] = tech.get('bb_lower')
+                cycle_data['bb_position'] = tech.get('bb_position')
+                cycle_data['tech_score'] = tech.get('score')
 
             ai_sig = analysis.get('ai_signal', {})
             if ai_sig:
@@ -294,7 +302,8 @@ class TradingBot:
             logger.info(f"📈 BTC: {analysis.get('btc_balance', 0):.8f} | USD: ${analysis.get('usd_balance', 0):.2f}")
 
             if tech:
-                logger.info(f"📉 Indicadores - EMA20: {tech.get('ema20', 0):.2f} | EMA50: {tech.get('ema50', 0):.2f} | RSI: {tech.get('rsi14', 0):.2f}")
+                score = tech.get('score', 'N/A')
+                logger.info(f"📉 Indicadores - EMA20: {tech.get('ema20', 0):.2f} | EMA50: {tech.get('ema50', 0):.2f} | RSI: {tech.get('rsi14', 0):.2f} | Score: {score}")
 
             if ai_sig:
                 logger.info(f"🤖 Señal AI: {ai_sig.get('signal', 'N/A')} (confianza: {ai_sig.get('confidence', 0):.2f}%)")
@@ -364,6 +373,13 @@ class TradingBot:
                 ema20=cycle_data['ema20'],
                 ema50=cycle_data['ema50'],
                 rsi14=cycle_data['rsi14'],
+                macd=cycle_data.get('macd'),
+                macd_signal=cycle_data.get('macd_signal'),
+                macd_hist=cycle_data.get('macd_hist'),
+                bb_upper=cycle_data.get('bb_upper'),
+                bb_lower=cycle_data.get('bb_lower'),
+                bb_position=cycle_data.get('bb_position'),
+                tech_score=cycle_data.get('tech_score'),
                 btc_balance=cycle_data['btc_balance'],
                 usd_balance=cycle_data['usd_balance'],
                 ai_signal=cycle_data['ai_signal'],

@@ -25,7 +25,7 @@ class Trade(TradeBase):
     trailing_stop: Optional[float] = None
     created_at: datetime
     closed_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
         json_encoders = {
@@ -49,7 +49,7 @@ class BotStatus(BotStatusBase):
     last_trade_id: Optional[str] = None
     error_count: int
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -67,7 +67,7 @@ class Signal(SignalBase):
     id: int
     timestamp: datetime
     action_taken: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
         json_encoders = {
@@ -79,6 +79,13 @@ class TradingCycleBase(BaseModel):
     ema20: float
     ema50: float
     rsi14: float
+    macd: Optional[float] = None
+    macd_signal: Optional[float] = None
+    macd_hist: Optional[float] = None
+    bb_upper: Optional[float] = None
+    bb_lower: Optional[float] = None
+    bb_position: Optional[float] = None
+    tech_score: Optional[int] = None
     btc_balance: float
     usd_balance: float
     ai_signal: str
@@ -101,7 +108,7 @@ class TradingCycle(TradingCycleBase):
     execution_time_ms: Optional[int] = None
     trigger: Optional[str] = None
     error_message: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
         json_encoders = {

@@ -8,7 +8,7 @@ from .database import Base
 
 class Trade(Base):
     __tablename__ = "trades"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     trade_id = Column(String, unique=True, index=True)
     order_type = Column(String)  # BUY, SELL
@@ -26,7 +26,7 @@ class Trade(Base):
 
 class BotStatus(Base):
     __tablename__ = "bot_status"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     is_running = Column(Boolean, default=False)
     trading_mode = Column(String, default="PAPER")  # PAPER, REAL
@@ -42,7 +42,7 @@ class BotStatus(Base):
 
 class Signal(Base):
     __tablename__ = "signals"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     ema20 = Column(Float)
@@ -55,29 +55,38 @@ class Signal(Base):
 
 class TradingCycle(Base):
     __tablename__ = "trading_cycles"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Market data
     btc_price = Column(Float)
     ema20 = Column(Float)
     ema50 = Column(Float)
     rsi14 = Column(Float)
-    
+
+    # New indicators (MACD, Bollinger, Score)
+    macd = Column(Float, nullable=True)
+    macd_signal = Column(Float, nullable=True)
+    macd_hist = Column(Float, nullable=True)
+    bb_upper = Column(Float, nullable=True)
+    bb_lower = Column(Float, nullable=True)
+    bb_position = Column(Float, nullable=True)
+    tech_score = Column(Integer, nullable=True)
+
     # Balances
     btc_balance = Column(Float)
     usd_balance = Column(Float)
-    
+
     # AI Signal
     ai_signal = Column(String)  # BUY, SELL, HOLD
     ai_confidence = Column(Float)
     ai_reason = Column(Text, nullable=True)
-    
+
     # Action taken
     action = Column(String)  # BOUGHT, SOLD, HOLD, ERROR
     trade_id = Column(String, nullable=True)
-    
+
     # Execution details
     execution_time_ms = Column(Integer, nullable=True)  # milliseconds
     trading_mode = Column(String)  # PAPER, REAL

@@ -251,6 +251,18 @@
                     </td>
                     <td class="px-4 py-3">
                       <div class="text-xs space-y-1">
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="text-gray-500">Score:</span>
+                          <span
+                            class="px-2 py-0.5 rounded text-xs font-bold"
+                            :class="{
+                              'bg-green-600 text-white': cycle.tech_score >= 65,
+                              'bg-red-600 text-white': cycle.tech_score <= 35,
+                              'bg-gray-600 text-gray-200': cycle.tech_score > 35 && cycle.tech_score < 65
+                            }"
+                            x-text="cycle.tech_score ? cycle.tech_score + '/100' : 'N/A'"
+                          ></span>
+                        </div>
                         <div>
                           <span class="text-gray-500">EMA20:</span>
                           <span x-text="formatNumber(cycle.ema20, 2)"></span>
@@ -262,6 +274,13 @@
                         <div>
                           <span class="text-gray-500">RSI:</span>
                           <span x-text="formatNumber(cycle.rsi14, 2)"></span>
+                        </div>
+                        <div x-show="cycle.macd !== null">
+                          <span class="text-gray-500">MACD:</span>
+                          <span
+                            :class="cycle.macd > cycle.macd_signal ? 'text-green-400' : 'text-red-400'"
+                            x-text="formatNumber(cycle.macd, 2)"
+                          ></span>
                         </div>
                       </div>
                     </td>
@@ -358,15 +377,15 @@
             >
               No trading cycles recorded yet
             </div>
-            
+
             <!-- Pagination Controls -->
             <div
               x-show="cycles.length > 0"
               class="mt-6 flex items-center justify-between border-t border-gray-700 pt-4"
             >
               <div class="text-sm text-gray-400">
-                Showing <span x-text="((cyclesCurrentPage - 1) * cyclesItemsPerPage) + 1"></span> 
-                to <span x-text="Math.min(cyclesCurrentPage * cyclesItemsPerPage, cycles.length)"></span> 
+                Showing <span x-text="((cyclesCurrentPage - 1) * cyclesItemsPerPage) + 1"></span>
+                to <span x-text="Math.min(cyclesCurrentPage * cyclesItemsPerPage, cycles.length)"></span>
                 of <span x-text="cycles.length"></span> cycles
               </div>
               <div class="flex items-center gap-2">
