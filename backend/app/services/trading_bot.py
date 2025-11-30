@@ -60,9 +60,42 @@ class TradingBot:
             return self.min_balance  # Use fixed amount
         return usd_balance * (self.min_balance_percent / 100)  # Use percentage
 
+    def _get_risk_profile(self) -> Dict:
+        """Get current risk profile from database"""
+        try:
+            from ..database import SessionLocal
+            from ..models import RiskProfile
+
+            db = SessionLocal()
+            profile = db.query(RiskProfile).first()
+            db.close()
+
+            if profile:
+                return {
+                    'profile': profile.profile,
+                    'buy_score_threshold': profile.buy_score_threshold,
+                    'sell_score_threshold': profile.sell_score_threshold,
+                    'trade_amount_percent': profile.trade_amount_percent,
+                    'trailing_stop_percent': profile.trailing_stop_percent
+                }
+        except Exception as e:
+            self.logger.warning(f"Could not load risk profile: {e}")
+
+        # Default moderate profile
+        return {
+            'profile': 'moderate',
+            'buy_score_threshold': 65,
+            'sell_score_threshold': 35,
+            'trade_amount_percent': 10.0,
+            'trailing_stop_percent': 2.0
+        }
+
     async def analyze_market(self) -> Dict:
         """Analyze current market conditions"""
         try:
+            # Get risk profile
+            risk_profile = self._get_risk_profile()
+
             # Use trading engine factory
             engine = get_trading_engine()
 
@@ -97,6 +130,10 @@ class TradingBot:
             # Calculate technical indicators
             tech_signals = TechnicalIndicators.analyze_signals(closes)
 
+            # Get thresholds from risk profile
+            buy_threshold = risk_profile['buy_score_threshold']
+            sell_threshold = risk_profile['sell_score_threshold']
+
             # Get AI signal (only if AI is available)
             if self.ai:
                 ai_signal = self.ai.get_signal(
@@ -113,18 +150,23 @@ class TradingBot:
                     tech_score=tech_signals.get('score', 50)
                 )
             else:
-                # Use technical score for paper trading without AI
+                # Use technical score with risk profile thresholds
                 tech_score = tech_signals.get('score', 50)
-                if tech_score >= 65:
+                if tech_score >= buy_threshold:
                     mock_signal = 'BUY'
-                elif tech_score <= 35:
+                elif tech_score <= sell_threshold:
                     mock_signal = 'SELL'
                 else:
                     mock_signal = 'HOLD'
-                ai_signal = {'signal': mock_signal, 'confidence': tech_score / 100, 'reason': f'Score técnico: {tech_score}'}
+                ai_signal = {
+                    'signal': mock_signal,
+                    'confidence': tech_score / 100,
+                    'reason': f'Score: {tech_score} (umbral compra: {buy_threshold}, venta: {sell_threshold})'
+                }
 
-            # Calculate dynamic amounts
-            trade_amount = self._calculate_trade_amount(usd_balance)
+            # Calculate dynamic amounts using risk profile
+            trade_percent = risk_profile['trade_amount_percent']
+            trade_amount = usd_balance * (trade_percent / 100)
             min_balance_required = self._calculate_min_balance(usd_balance)
 
             return {
@@ -136,6 +178,7 @@ class TradingBot:
                 'ai_signal': ai_signal,
                 'trade_amount': trade_amount,
                 'min_balance_required': min_balance_required,
+                'risk_profile': risk_profile,
                 'should_buy': (
                     ai_signal['signal'] == 'BUY' and
                     usd_balance >= (min_balance_required + trade_amount) and

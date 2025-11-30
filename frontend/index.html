@@ -117,6 +117,59 @@
         </div>
 
         <!-- Next Cycle & Manual Control -->
+        <!-- Risk Profile Control -->
+        <div class="bg-gradient-to-br from-amber-900/30 to-gray-900 rounded-xl border border-amber-700/50 p-6 mb-6 shadow-lg">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+                ⚙️ Risk Profile
+              </h3>
+              <p class="text-xs text-amber-300/70 mt-1">Control de agresividad del bot</p>
+            </div>
+
+            <!-- Profile Selector -->
+            <div class="flex flex-wrap gap-2">
+              <button
+                @click="setRiskProfile('conservative')"
+                :class="riskProfile.profile === 'conservative' ? 'bg-green-600 ring-2 ring-green-400' : 'bg-gray-700 hover:bg-gray-600'"
+                class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
+              >
+                <span>🛡️ Conservador</span>
+                <span class="text-xs opacity-70">2-5%/mes</span>
+              </button>
+              <button
+                @click="setRiskProfile('moderate')"
+                :class="riskProfile.profile === 'moderate' ? 'bg-yellow-600 ring-2 ring-yellow-400' : 'bg-gray-700 hover:bg-gray-600'"
+                class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
+              >
+                <span>⚖️ Moderado</span>
+                <span class="text-xs opacity-70">5-10%/mes</span>
+              </button>
+              <button
+                @click="setRiskProfile('aggressive')"
+                :class="riskProfile.profile === 'aggressive' ? 'bg-red-600 ring-2 ring-red-400' : 'bg-gray-700 hover:bg-gray-600'"
+                class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
+              >
+                <span>🔥 Agresivo</span>
+                <span class="text-xs opacity-70">8-18%/mes</span>
+              </button>
+            </div>
+
+            <!-- Projection Card -->
+            <div class="bg-gray-800/50 rounded-lg p-4 min-w-[200px]">
+              <div class="text-xs text-gray-400 mb-1">Proyección Mensual</div>
+              <div class="text-2xl font-bold text-green-400">
+                <span x-text="riskProfile.projected_monthly_return_min || '5'"></span>% -
+                <span x-text="riskProfile.projected_monthly_return_max || '10'"></span>%
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                Score compra: ≥<span x-text="riskProfile.buy_score_threshold || 65"></span> |
+                Trade: <span x-text="riskProfile.trade_amount_percent || 10"></span>%
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           <!-- Next Cycle Countdown -->
           <div
@@ -627,6 +680,14 @@
           logLevel: "",
           autoRefreshLogs: false,
           lastServerSync: Date.now(), // Track last sync to prevent drift
+          riskProfile: {
+            profile: 'moderate',
+            buy_score_threshold: 65,
+            sell_score_threshold: 35,
+            trade_amount_percent: 10,
+            projected_monthly_return_min: 5,
+            projected_monthly_return_max: 10
+          },
 
           get timeSinceLastCycle() {
             if (!this.schedulerStatus.last_cycle) return "-";
@@ -735,6 +796,7 @@
             await this.refreshStatus();
             await this.fetchLogs();
             await this.fetchCycles();
+            await this.fetchRiskProfile();
 
             // Refresh status every 10 seconds from backend (more frequent for accurate countdown)
             setInterval(() => this.refreshStatus(), 10000);
@@ -907,6 +969,36 @@
               }
             } catch (err) {
               console.error("Error fetching cycles:", err);
+            }
+          },
+
+          async fetchRiskProfile() {
+            try {
+              const response = await fetch("/api/v1/bot/risk-profile");
+              if (response.ok) {
+                const data = await response.json();
+                this.riskProfile = data;
+              }
+            } catch (err) {
+              console.error("Error fetching risk profile:", err);
+            }
+          },
+
+          async setRiskProfile(profile) {
+            try {
+              const response = await fetch("/api/v1/bot/risk-profile", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ profile })
+              });
+              if (response.ok) {
+                const data = await response.json();
+                this.riskProfile = data;
+                // Show success notification
+                console.log(`Risk profile updated to ${profile}`);
+              }
+            } catch (err) {
+              console.error("Error updating risk profile:", err);
             }
           },
 

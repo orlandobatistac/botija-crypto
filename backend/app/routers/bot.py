@@ -72,12 +72,12 @@ async def get_dashboard_status():
         # Get trading engine (paper or real)
         engine = get_trading_engine()
         balances = engine.load_balances()
-        
+
         # If paper engine, get additional stats
         if isinstance(engine, PaperTradingEngine):
             wallet = engine.get_wallet_summary()
             position = engine.get_open_position()
-            
+
             return {
                 "mode": "PAPER",
                 "btc_balance": wallet['btc_balance'],
@@ -159,12 +159,12 @@ async def run_trading_cycle(
         last_cycle_info["status"] = "running"
         last_cycle_info["error"] = None
         last_cycle_info["trigger"] = "manual"
-        
+
         result = await bot.run_cycle(trigger="manual")
-        
+
         # Update last cycle info - success
         last_cycle_info["status"] = "success"
-        
+
         return {
             "success": True,
             "message": "Trading cycle executed successfully",
@@ -174,7 +174,7 @@ async def run_trading_cycle(
         # Update last cycle info - error
         last_cycle_info["status"] = "error"
         last_cycle_info["error"] = str(e)
-        
+
         return {
             "success": False,
             "message": f"Error executing cycle: {str(e)}"
@@ -187,10 +187,10 @@ async def run_manual_cycle(
 ):
     """Execute one trading cycle manually (alias)"""
     result = await bot.run_cycle()
-    
+
     if result.get('success') and 'analysis' in result:
         analysis = result['analysis']
-        
+
         # Store signal in database
         signal_data = schemas.SignalCreate(
             ema20=analysis['tech_signals'].get('ema20', 0),
@@ -199,22 +199,22 @@ async def run_manual_cycle(
             ai_signal=analysis['ai_signal']['signal'],
             confidence=analysis['ai_signal']['confidence']
         )
-        
+
         db_signal = models.Signal(**signal_data.dict())
         db.add(db_signal)
-        
+
         # Update bot status
         status_data = schemas.BotStatusCreate(
             is_running=bot.is_running,
             btc_balance=analysis['btc_balance'],
             usd_balance=analysis['usd_balance']
         )
-        
+
         db_status = models.BotStatus(**status_data.dict())
         db.add(db_status)
-        
+
         db.commit()
-    
+
     return result
 
 @router.get("/analysis")
@@ -230,10 +230,10 @@ async def get_indicators(pair: str = "XBTUSDT", bot: TradingBot = Depends(get_tr
         ohlc_data = bot.kraken.get_ohlc(pair)
         if not ohlc_data:
             return {"error": "No OHLC data available"}
-        
+
         closes = [float(candle[4]) for candle in ohlc_data]
         indicators = TechnicalIndicators.analyze_signals(closes)
-        
+
         return indicators
     except Exception as e:
         return {"error": str(e)}
@@ -261,7 +261,7 @@ async def download_logs():
     """Download complete log file"""
     # Check if running in production (systemd service)
     service_name = "kraken-ai-trading-bot"
-    
+
     # Try to get logs from systemd journal (production)
     try:
         result = subprocess.run(
@@ -270,7 +270,7 @@ async def download_logs():
             text=True,
             timeout=10
         )
-        
+
         if result.returncode == 0 and result.stdout:
             # Return journalctl logs as file
             return Response(
@@ -283,18 +283,18 @@ async def download_logs():
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
         # journalctl not available or failed, use in-memory logs
         pass
-    
+
     # Fallback: Use in-memory logs (development)
     handler = get_log_handler()
     logs = handler.get_logs(limit=10000)  # Get up to 10k logs
-    
+
     # Format logs as text
     log_lines = []
     for log in logs:
         log_lines.append(f"{log['timestamp']} - {log['logger']} - {log['level']} - {log['message']}")
-    
+
     log_content = "\n".join(log_lines)
-    
+
     return Response(
         content=log_content,
         media_type="text/plain",
@@ -319,4 +319,101 @@ async def get_trading_cycle(cycle_id: int, db: Session = Depends(get_db)):
     if not cycle:
         return {"error": "Cycle not found"}
     return cycle
+
+
+# ==================== RISK PROFILE ENDPOINTS ====================
+
+@router.get("/risk-profile")
+async def get_risk_profile(db: Session = Depends(get_db)):
+    """Get current risk profile configuration"""
+    profile = db.query(models.RiskProfile).first()
+
+    if not profile:
+        # Create default moderate profile
+        profile = models.RiskProfile(
+            profile="moderate",
+            buy_score_threshold=65,
+            sell_score_threshold=35,
+            trade_amount_percent=10.0,
+            max_trades_per_day=3,
+            trailing_stop_percent=2.0
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+
+    # Add projections based on profile
+    presets = schemas.RISK_PRESETS.get(profile.profile, schemas.RISK_PRESETS["moderate"])
+
+    return {
+        "id": profile.id,
+        "profile": profile.profile,
+        "buy_score_threshold": profile.buy_score_threshold,
+        "sell_score_threshold": profile.sell_score_threshold,
+        "trade_amount_percent": profile.trade_amount_percent,
+        "max_trades_per_day": profile.max_trades_per_day,
+        "trailing_stop_percent": profile.trailing_stop_percent,
+        "updated_at": profile.updated_at,
+        "projected_monthly_return_min": presets["projected_monthly_return_min"],
+        "projected_monthly_return_max": presets["projected_monthly_return_max"],
+    }
+
+@router.put("/risk-profile")
+async def update_risk_profile(
+    update: schemas.RiskProfileUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update risk profile configuration"""
+    profile = db.query(models.RiskProfile).first()
+
+    if not profile:
+        profile = models.RiskProfile()
+        db.add(profile)
+
+    # If a preset profile is selected, apply all its settings
+    if update.profile and update.profile in schemas.RISK_PRESETS:
+        preset = schemas.RISK_PRESETS[update.profile]
+        profile.profile = update.profile
+        profile.buy_score_threshold = preset["buy_score_threshold"]
+        profile.sell_score_threshold = preset["sell_score_threshold"]
+        profile.trade_amount_percent = preset["trade_amount_percent"]
+        profile.max_trades_per_day = preset["max_trades_per_day"]
+        profile.trailing_stop_percent = preset["trailing_stop_percent"]
+    else:
+        # Apply individual updates
+        if update.buy_score_threshold is not None:
+            profile.buy_score_threshold = update.buy_score_threshold
+        if update.sell_score_threshold is not None:
+            profile.sell_score_threshold = update.sell_score_threshold
+        if update.trade_amount_percent is not None:
+            profile.trade_amount_percent = update.trade_amount_percent
+        if update.max_trades_per_day is not None:
+            profile.max_trades_per_day = update.max_trades_per_day
+        if update.trailing_stop_percent is not None:
+            profile.trailing_stop_percent = update.trailing_stop_percent
+        profile.profile = "custom"
+
+    db.commit()
+    db.refresh(profile)
+
+    presets = schemas.RISK_PRESETS.get(profile.profile, schemas.RISK_PRESETS["moderate"])
+
+    return {
+        "id": profile.id,
+        "profile": profile.profile,
+        "buy_score_threshold": profile.buy_score_threshold,
+        "sell_score_threshold": profile.sell_score_threshold,
+        "trade_amount_percent": profile.trade_amount_percent,
+        "max_trades_per_day": profile.max_trades_per_day,
+        "trailing_stop_percent": profile.trailing_stop_percent,
+        "updated_at": profile.updated_at,
+        "projected_monthly_return_min": presets.get("projected_monthly_return_min", 5.0),
+        "projected_monthly_return_max": presets.get("projected_monthly_return_max", 10.0),
+        "message": f"Risk profile updated to {profile.profile}"
+    }
+
+@router.get("/risk-presets")
+async def get_risk_presets():
+    """Get available risk profile presets"""
+    return schemas.RISK_PRESETS
 

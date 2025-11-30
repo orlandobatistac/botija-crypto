@@ -114,3 +114,62 @@ class TradingCycle(TradingCycleBase):
         json_encoders = {
             datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%SZ') if v else None
         }
+
+
+# Risk Profile Schemas
+class RiskProfileBase(BaseModel):
+    profile: str = "moderate"  # conservative, moderate, aggressive
+    buy_score_threshold: int = 65
+    sell_score_threshold: int = 35
+    trade_amount_percent: float = 10.0
+    max_trades_per_day: int = 3
+    trailing_stop_percent: float = 2.0
+
+class RiskProfileUpdate(BaseModel):
+    profile: Optional[str] = None
+    buy_score_threshold: Optional[int] = None
+    sell_score_threshold: Optional[int] = None
+    trade_amount_percent: Optional[float] = None
+    max_trades_per_day: Optional[int] = None
+    trailing_stop_percent: Optional[float] = None
+
+class RiskProfile(RiskProfileBase):
+    id: int
+    updated_at: datetime
+    # Calculated projections
+    projected_monthly_return_min: Optional[float] = None
+    projected_monthly_return_max: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+# Risk profile presets
+RISK_PRESETS = {
+    "conservative": {
+        "buy_score_threshold": 75,
+        "sell_score_threshold": 30,
+        "trade_amount_percent": 5.0,
+        "max_trades_per_day": 2,
+        "trailing_stop_percent": 1.5,
+        "projected_monthly_return_min": 2.0,
+        "projected_monthly_return_max": 5.0,
+    },
+    "moderate": {
+        "buy_score_threshold": 65,
+        "sell_score_threshold": 35,
+        "trade_amount_percent": 10.0,
+        "max_trades_per_day": 3,
+        "trailing_stop_percent": 2.0,
+        "projected_monthly_return_min": 5.0,
+        "projected_monthly_return_max": 10.0,
+    },
+    "aggressive": {
+        "buy_score_threshold": 55,
+        "sell_score_threshold": 40,
+        "trade_amount_percent": 20.0,
+        "max_trades_per_day": 5,
+        "trailing_stop_percent": 3.0,
+        "projected_monthly_return_min": 8.0,
+        "projected_monthly_return_max": 18.0,
+    }
+}

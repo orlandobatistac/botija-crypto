@@ -93,3 +93,17 @@ class TradingCycle(Base):
     trigger = Column(String, nullable=True)  # manual, scheduled
     error_message = Column(Text, nullable=True)
 
+
+class RiskProfile(Base):
+    """Risk profile configuration for trading aggressiveness"""
+    __tablename__ = "risk_profile"
+
+    id = Column(Integer, primary_key=True, index=True)
+    profile = Column(String, default="moderate")  # conservative, moderate, aggressive
+    buy_score_threshold = Column(Integer, default=65)  # Score mínimo para comprar
+    sell_score_threshold = Column(Integer, default=35)  # Score máximo para vender
+    trade_amount_percent = Column(Float, default=10.0)  # % del capital por trade
+    max_trades_per_day = Column(Integer, default=3)  # Límite de trades diarios
+    trailing_stop_percent = Column(Float, default=2.0)  # % trailing stop
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
