@@ -39,8 +39,8 @@ print("=" * 70)
 print(f"   Comisión: {COMMISSION*100:.1f}% | Slippage: {SLIPPAGE*100:.1f}%")
 
 # 1. Cargar datos de BTC
-print("\n📥 Cargando datos de BTC 2020-2025...")
-btc = yf.download("BTC-USD", start="2020-01-01", end="2025-11-30", progress=False)
+print("\n📥 Cargando datos de BTC 2018-2025...")
+btc = yf.download("BTC-USD", start="2018-01-01", end="2025-11-30", progress=False)
 print(f"   Datos: {len(btc)} días")
 
 # 2. Calcular indicadores
@@ -54,6 +54,7 @@ df['Open'] = btc['Open'].values
 df['Close'] = btc['Close'].values
 df['ema20'] = df['Close'].ewm(span=20).mean()
 df['ema50'] = df['Close'].ewm(span=50).mean()
+df['ema200'] = df['Close'].ewm(span=200).mean()  # Protocolo de Invierno
 
 # RSI
 delta = df['Close'].diff()
@@ -91,8 +92,33 @@ conn.close()
 
 regimes_df['week_start'] = pd.to_datetime(regimes_df['week_start'])
 regimes_dict = regimes_df.set_index('week_start').to_dict('index')
-print(f"   Regímenes cargados: {len(regimes_df)} semanas")
+print(f"   Regímenes AI cargados: {len(regimes_df)} semanas")
 print(f"   Distribución: {regimes_df['regime'].value_counts().to_dict()}")
+
+# Generar regímenes sintéticos para 2018-2019 (antes de tener IA)
+print("\n📊 Generando regímenes sintéticos para 2018-2019...")
+synthetic_count = 0
+for date in df.index:
+    if date < pd.Timestamp('2020-01-01'):
+        week_start = date - pd.Timedelta(days=date.dayofweek)
+        week_start = week_start.normalize()
+        if week_start not in regimes_dict:
+            row = df.loc[date]
+            # Lógica simple basada en indicadores
+            if row['Close'] > row['ema50'] and row['rsi'] > 55:
+                regime = 'BULL'
+            elif row['Close'] < row['ema50'] and row['rsi'] < 45:
+                regime = 'BEAR'
+            elif row['rsi'] > 60 or row['rsi'] < 40:
+                regime = 'VOLATILE'
+            else:
+                regime = 'LATERAL'
+            regimes_dict[week_start] = {
+                'regime': regime, 'buy_threshold': 50, 'sell_threshold': 35,
+                'capital_percent': 75, 'stop_loss_percent': 2.0
+            }
+            synthetic_count += 1
+print(f"   Regímenes sintéticos creados: {synthetic_count}")
 
 def get_regime_params(date):
     """Obtiene parámetros del régimen para una fecha."""
@@ -143,7 +169,7 @@ for i in range(len(df)):
     is_debug_date = date_str in DEBUG_DATES
 
     # ============================================================
-    # LÓGICA DE TRADING: SMART TREND FOLLOWING
+    # LÓGICA DE TRADING: SMART TREND FOLLOWING + PROTOCOLO INVIERNO
     # ============================================================
 
     # --- SIN POSICIÓN: DECIDIR SI COMPRAR ---
@@ -152,17 +178,32 @@ for i in range(len(df)):
         buy_reason = ""
 
         ema20_upper = ema20 * (1 + BUFFER)  # EMA20 + 1.5% (Fast Entry)
+        ema200 = float(row['ema200'])
+        rsi = float(row['rsi'])
 
-        # ESTRATEGIA EMA20 UNIFORME (mejor rendimiento)
-        is_bullish_ai = (regime == 'BULL')
-        is_technical_recovery = (regime != 'BEAR') and (close_price > ema20_upper)
+        # PROTOCOLO DE INVIERNO: Detectar Bear Market Macro
+        is_crypto_winter = close_price < ema200
 
-        if is_bullish_ai:
-            should_buy = True
-            buy_reason = "Régimen BULL (Modo Euforia)"
-        elif is_technical_recovery:
-            should_buy = True
-            buy_reason = f"Fast Entry: {regime} + Precio ${close_price:,.0f} > EMA20+1.5% ${ema20_upper:,.0f}"
+        if is_crypto_winter:
+            # EN INVIERNO: Solo compramos si la IA dice BULL + RSI > 65 (momentum fuerte)
+            # RSI 50-65 en invierno = rebote técnico falso, no comprar
+            if regime == 'BULL' and rsi > 65:
+                should_buy = True
+                buy_reason = f"❄️ Invierno + BULL + RSI {rsi:.0f}>65 | Precio ${close_price:,.0f} < EMA200 ${ema200:,.0f}"
+            else:
+                should_buy = False  # CASH - IA dice Bull pero momentum insuficiente
+                # No hay buy_reason porque no compramos
+        else:
+            # NO ES INVIERNO (Precio > EMA200): Lógica normal
+            is_bullish_ai = (regime == 'BULL')
+            is_technical_recovery = (regime != 'BEAR') and (close_price > ema20_upper)
+
+            if is_bullish_ai:
+                should_buy = True
+                buy_reason = "Régimen BULL (Modo Euforia)"
+            elif is_technical_recovery:
+                should_buy = True
+                buy_reason = f"Fast Entry: {regime} + Precio ${close_price:,.0f} > EMA20+1.5% ${ema20_upper:,.0f}"
 
         if should_buy and capital > 10:
             # DYNAMIC LEVERAGE: Solo apalancamiento en BULL

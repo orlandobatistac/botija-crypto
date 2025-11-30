@@ -14,6 +14,7 @@ from .telegram_alerts import TelegramAlerts
 from .trailing_stop import TrailingStop
 from .modes.factory import get_trading_engine
 from .ai_regime import AIRegimeService
+from .smart_trend_follower import SmartTrendFollower
 
 logger = logging.getLogger(__name__)
 
@@ -103,18 +104,20 @@ class TradingBot:
         }
 
     async def analyze_market(self) -> Dict:
-        """Analyze current market conditions"""
+        """Analyze current market conditions using Smart Trend Follower strategy"""
         try:
-            # Get risk profile
+            # Get risk profile with AI regime
             risk_profile = self._get_risk_profile()
+            ai_regime = risk_profile.get('ai_regime', 'LATERAL')
 
             # Use trading engine factory
             engine = get_trading_engine()
 
-            # Get price data
+            # Get balances
             balance = engine.get_balance()
             btc_balance = balance.get('btc', 0.0)
             usd_balance = balance.get('usd', 0.0)
+            has_position = btc_balance > 0.0001  # More than dust
 
             # Get current price
             current_price = engine.get_current_price()
@@ -122,13 +125,11 @@ class TradingBot:
                 self.logger.warning("No price data available")
                 return {}
 
-            # Get OHLC data for indicators
+            # Get OHLC data for indicators (need 200+ candles for EMA200)
             from ..config import Config
             if self.kraken:
-                # Use authenticated Kraken client when available
                 ohlc_data = self.kraken.get_ohlc(interval=Config.KRAKEN_OHLC_INTERVAL)
             else:
-                # Use public Kraken OHLC (no API key required) for PAPER mode
                 public_client = KrakenClient(api_key="", api_secret="")
                 ohlc_data = public_client.get_ohlc(interval=Config.KRAKEN_OHLC_INTERVAL)
 
@@ -139,58 +140,41 @@ class TradingBot:
             # Extract closing prices
             closes = [float(candle[4]) for candle in ohlc_data]
 
-            # Calculate technical indicators (includes adaptive thresholds)
+            # Get Smart Trend Follower signal (winning backtest strategy)
+            stf_signal = SmartTrendFollower.get_trading_signal(
+                prices=closes,
+                regime=ai_regime,
+                has_position=has_position,
+                current_price=current_price
+            )
+
+            # Also get technical indicators for logging/display
             tech_signals = TechnicalIndicators.analyze_signals(closes)
 
-            # Get base thresholds from risk profile
-            base_buy = risk_profile['buy_score_threshold']
-            base_sell = risk_profile['sell_score_threshold']
+            # Log the smart trend follower decision
+            self.logger.info(
+                f"🎯 Smart Trend Follower: {stf_signal['signal']} | "
+                f"Regime: {ai_regime} | Leverage: x{stf_signal['leverage']} | "
+                f"Winter: {'❄️' if stf_signal.get('is_winter_mode') else '☀️'}"
+            )
+            self.logger.info(f"   Reason: {stf_signal['reason']}")
 
-            # Use adaptive thresholds if available (based on volatility)
-            buy_threshold = tech_signals.get('buy_threshold', base_buy)
-            sell_threshold = tech_signals.get('sell_threshold', base_sell)
-            market_regime = tech_signals.get('market_regime', 'normal')
-            volatility = tech_signals.get('volatility', 0)
+            # Calculate position size with leverage
+            leverage = stf_signal['leverage']
+            capital_percent = risk_profile['trade_amount_percent']
+            btc_qty, effective_exposure = SmartTrendFollower.calculate_position_size(
+                usd_balance=usd_balance,
+                capital_percent=capital_percent,
+                leverage=leverage,
+                price=current_price
+            )
 
-            self.logger.info(f"AI Regime: {risk_profile.get('ai_regime', 'N/A')}, "
-                           f"Market volatility: {volatility:.1f}%, "
-                           f"Thresholds: buy>={buy_threshold}, sell<={sell_threshold}, "
-                           f"Capital: {risk_profile.get('trade_amount_percent', 75)}%")
-
-            # Get AI signal (only if AI is available)
-            if self.ai:
-                ai_signal = self.ai.get_signal(
-                    price=current_price,
-                    ema20=tech_signals.get('ema20', 0),
-                    ema50=tech_signals.get('ema50', 0),
-                    rsi=tech_signals.get('rsi14', 0),
-                    btc_balance=btc_balance,
-                    usd_balance=usd_balance,
-                    macd=tech_signals.get('macd', 0),
-                    macd_signal=tech_signals.get('macd_signal', 0),
-                    macd_hist=tech_signals.get('macd_hist', 0),
-                    bb_position=tech_signals.get('bb_position', 0.5),
-                    tech_score=tech_signals.get('score', 50)
-                )
-            else:
-                # Use technical score with ADAPTIVE thresholds
-                tech_score = tech_signals.get('score', 50)
-                if tech_score >= buy_threshold:
-                    mock_signal = 'BUY'
-                elif tech_score <= sell_threshold:
-                    mock_signal = 'SELL'
-                else:
-                    mock_signal = 'HOLD'
-                ai_signal = {
-                    'signal': mock_signal,
-                    'confidence': tech_score / 100,
-                    'reason': f'Score: {tech_score} (umbral compra: {buy_threshold}, venta: {sell_threshold})'
-                }
-
-            # Calculate dynamic amounts using risk profile
-            trade_percent = risk_profile['trade_amount_percent']
-            trade_amount = usd_balance * (trade_percent / 100)
-            min_balance_required = self._calculate_min_balance(usd_balance)
+            # Build AI signal format for compatibility
+            ai_signal = {
+                'signal': stf_signal['signal'],
+                'confidence': risk_profile.get('ai_confidence', 0.7),
+                'reason': stf_signal['reason']
+            }
 
             return {
                 'timestamp': datetime.now().isoformat(),
@@ -199,17 +183,19 @@ class TradingBot:
                 'usd_balance': usd_balance,
                 'tech_signals': tech_signals,
                 'ai_signal': ai_signal,
-                'trade_amount': trade_amount,
-                'min_balance_required': min_balance_required,
+                'stf_signal': stf_signal,  # Full Smart Trend Follower signal
+                'trade_amount': effective_exposure / leverage,  # Base amount before leverage
+                'effective_exposure': effective_exposure,
+                'leverage': leverage,
+                'min_balance_required': self._calculate_min_balance(usd_balance),
                 'risk_profile': risk_profile,
                 'should_buy': (
-                    ai_signal['signal'] == 'BUY' and
-                    usd_balance >= (min_balance_required + trade_amount) and
-                    btc_balance == 0
+                    stf_signal['signal'] == 'BUY' and
+                    usd_balance >= (self._calculate_min_balance(usd_balance) + effective_exposure / leverage)
                 ),
                 'should_sell': (
-                    ai_signal['signal'] == 'SELL' and
-                    btc_balance > 0
+                    stf_signal['signal'] == 'SELL' and
+                    has_position
                 )
             }
 

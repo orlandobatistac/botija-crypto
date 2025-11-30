@@ -1,7 +1,5 @@
 """
-Script to populate database with AI-analyzed market regimes.
-Generates optimal trading parameters per week based on REAL historical data.
-Uses yfinance to inject actual price/indicator data into prompts.
+Populate AI regimes for 2018-2019 using same prompt/API as 2020+
 """
 
 import os
@@ -11,7 +9,6 @@ import time
 from datetime import date, timedelta
 from pathlib import Path
 
-# Add backend directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 from dotenv import load_dotenv
@@ -25,7 +22,6 @@ import numpy as np
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Prompt template with REAL data injection
 PROMPT_TEMPLATE = """You are an AGGRESSIVE BTC swing trader analyzing this week.
 Date: {week_start}
 
@@ -72,34 +68,25 @@ Respond ONLY with this JSON format:
 
 def fetch_btc_data(start_date: date, end_date: date) -> pd.DataFrame:
     """Fetch BTC historical data from yfinance."""
-    # Add buffer for indicator calculations
     buffer_start = start_date - timedelta(days=60)
-
     btc = yf.Ticker("BTC-USD")
     df = btc.history(start=buffer_start.isoformat(), end=(end_date + timedelta(days=7)).isoformat())
 
     if df.empty:
-        raise ValueError("Could not fetch BTC data from yfinance")
+        raise ValueError("Could not fetch BTC data")
 
-    # Calculate indicators
     df['EMA20'] = df['Close'].ewm(span=20).mean()
     df['EMA50'] = df['Close'].ewm(span=50).mean()
 
-    # RSI
     delta = df['Close'].diff()
     gain = delta.where(delta > 0, 0).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     df['RSI'] = 100 - (100 / (1 + rs))
 
-    # Volatility (weekly returns std)
     df['Returns'] = df['Close'].pct_change()
     df['Volatility'] = df['Returns'].rolling(window=7).std() * 100
-
-    # Volume moving average
     df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()
-
-    # 52-week high/low
     df['High_52w'] = df['Close'].rolling(window=252, min_periods=1).max()
     df['Low_52w'] = df['Close'].rolling(window=252, min_periods=1).min()
 
@@ -108,10 +95,7 @@ def fetch_btc_data(start_date: date, end_date: date) -> pd.DataFrame:
 
 def get_week_data(df: pd.DataFrame, week_start: date) -> dict:
     """Extract market data for a specific week."""
-    # Make timezone-aware to match yfinance data
     week_start_ts = pd.Timestamp(week_start, tz='UTC')
-
-    # Find the closest trading day
     mask = df.index >= week_start_ts
     if not mask.any():
         return None
@@ -119,68 +103,55 @@ def get_week_data(df: pd.DataFrame, week_start: date) -> dict:
     idx = df.index[mask][0]
     row = df.loc[idx]
 
-    # Get historical prices for change calculations
     price = row['Close']
 
     # 7-day change
-    past_7d = df.index[df.index <= idx][-8:-1] if len(df.index[df.index <= idx]) > 7 else df.index[:1]
-    if len(past_7d) > 0:
-        price_7d_ago = df.loc[past_7d[0], 'Close']
-        change_7d = ((price - price_7d_ago) / price_7d_ago) * 100
-    else:
-        change_7d = 0
+    idx_7d = df.index.get_indexer([idx - pd.Timedelta(days=7)], method='nearest')[0]
+    price_7d = df.iloc[idx_7d]['Close'] if idx_7d >= 0 else price
+    change_7d = ((price - price_7d) / price_7d * 100) if price_7d > 0 else 0
 
     # 30-day change
-    past_30d = df.index[df.index <= idx]
-    if len(past_30d) > 30:
-        price_30d_ago = df.loc[past_30d[-31], 'Close']
-        change_30d = ((price - price_30d_ago) / price_30d_ago) * 100
-    else:
-        change_30d = 0
+    idx_30d = df.index.get_indexer([idx - pd.Timedelta(days=30)], method='nearest')[0]
+    price_30d = df.iloc[idx_30d]['Close'] if idx_30d >= 0 else price
+    change_30d = ((price - price_30d) / price_30d * 100) if price_30d > 0 else 0
 
-    # EMA signal
-    ema_signal = "ABOVE (bullish)" if row['EMA20'] > row['EMA50'] else "BELOW (bearish)"
-
-    # Volume ratio
+    ema_signal = "BULLISH" if row['EMA20'] > row['EMA50'] else "BEARISH"
     volume_ratio = row['Volume'] / row['Volume_MA20'] if row['Volume_MA20'] > 0 else 1.0
-
-    # 52-week comparisons
-    vs_52w_high = ((price - row['High_52w']) / row['High_52w']) * 100
-    vs_52w_low = ((price - row['Low_52w']) / row['Low_52w']) * 100
+    vs_52w_high = ((price - row['High_52w']) / row['High_52w'] * 100) if row['High_52w'] > 0 else 0
+    vs_52w_low = ((price - row['Low_52w']) / row['Low_52w'] * 100) if row['Low_52w'] > 0 else 0
 
     return {
         'price': price,
         'change_7d': change_7d,
         'change_30d': change_30d,
-        'rsi': row['RSI'] if not pd.isna(row['RSI']) else 50,
+        'rsi': row['RSI'] if pd.notna(row['RSI']) else 50,
         'ema_signal': ema_signal,
-        'volatility': row['Volatility'] if not pd.isna(row['Volatility']) else 2.0,
-        'volume_ratio': volume_ratio,
+        'volatility': row['Volatility'] if pd.notna(row['Volatility']) else 2.0,
+        'volume_ratio': volume_ratio if pd.notna(volume_ratio) else 1.0,
         'vs_52w_high': vs_52w_high,
         'vs_52w_low': vs_52w_low
     }
 
 
-def get_weeks(start: date, end: date) -> list[date]:
-    """Generate list of week start dates (Mondays)."""
+def get_weeks(start: date, end: date) -> list:
+    """Generate list of Monday dates."""
     weeks = []
-    current = start - timedelta(days=start.weekday())  # Adjust to Monday
+    current = start - timedelta(days=start.weekday())
     while current <= end:
         weeks.append(current)
         current += timedelta(days=7)
     return weeks
 
 
-def fetch_regime_single(week_start: date, market_data: dict) -> dict:
-    """Call OpenAI for a single week with real market data."""
-
+def fetch_regime_single(week_start: date, market_data: dict) -> tuple:
+    """Fetch regime from OpenAI for a single week."""
     prompt = PROMPT_TEMPLATE.format(
         week_start=week_start.isoformat(),
         **market_data
     )
 
     response = client.chat.completions.create(
-        model="gpt-5.1",
+        model="gpt-4.1",  # Usar modelo disponible
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
         response_format={"type": "json_object"}
@@ -188,65 +159,29 @@ def fetch_regime_single(week_start: date, market_data: dict) -> dict:
 
     content = response.choices[0].message.content
     tokens = response.usage.total_tokens
-
     data = json.loads(content)
     data['week_start'] = week_start.isoformat()
 
     return data, tokens
 
 
-def init_database(db_path: str):
-    """Create table if not exists."""
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Drop existing table to repopulate
-    cursor.execute("DROP TABLE IF EXISTS ai_market_regimes")
-
-    cursor.execute("""
-        CREATE TABLE ai_market_regimes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            week_start DATE NOT NULL UNIQUE,
-            week_end DATE NOT NULL,
-            regime TEXT NOT NULL,
-            buy_threshold INTEGER DEFAULT 50,
-            sell_threshold INTEGER DEFAULT 35,
-            capital_percent INTEGER DEFAULT 75,
-            atr_multiplier REAL DEFAULT 1.5,
-            stop_loss_percent REAL DEFAULT 2.0,
-            confidence REAL DEFAULT 0.7,
-            reasoning TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_week_start ON ai_market_regimes(week_start)")
-
-    conn.commit()
-    conn.close()
-    print("✅ Table ai_market_regimes created")
-
-
 def save_regime(db_path: str, regime: dict) -> bool:
-    """Save a single regime to database."""
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
+    """Save regime to database."""
     try:
-        week_start = regime.get("week_start")
-        if not week_start:
-            return False
+        week_start_str = regime.get("week_start")
+        week_start_date = date.fromisoformat(week_start_str)
+        week_end_date = week_start_date + timedelta(days=6)
 
-        week_end = (date.fromisoformat(week_start) + timedelta(days=6)).isoformat()
-
-        cursor.execute("""
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
             INSERT OR REPLACE INTO ai_market_regimes
             (week_start, week_end, regime, buy_threshold, sell_threshold,
-             capital_percent, atr_multiplier, stop_loss_percent, confidence, reasoning)
+             capital_percent, atr_multiplier, stop_loss_percent,
+             confidence, reasoning)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            week_start,
-            week_end,
+            week_start_str,
+            week_end_date.isoformat(),
             regime.get("regime", "LATERAL"),
             regime.get("buy_threshold", 50),
             regime.get("sell_threshold", 35),
@@ -260,90 +195,89 @@ def save_regime(db_path: str, regime: dict) -> bool:
         conn.close()
         return True
     except Exception as e:
-        print(f"   ⚠️ Error saving {regime}: {e}")
-        conn.close()
+        print(f"   ⚠️ Error saving: {e}")
         return False
 
 
-def populate_database():
-    """Populate DB with AI regimes using REAL market data."""
-    start = date(2020, 1, 1)
-    end = date(2025, 11, 30)
+def main():
+    """Populate 2018-2019 regimes."""
+    start = date(2018, 1, 1)
+    end = date(2019, 12, 31)
 
     db_path = Path(__file__).parent.parent / "backend" / "data" / "trading_bot.db"
 
     print("=" * 60)
-    print("🤖 POPULATING DATABASE WITH AI REGIMES (REAL DATA)")
+    print("🤖 POPULATING 2018-2019 WITH AI REGIMES")
     print("=" * 60)
     print(f"📅 Period: {start} to {end}")
 
-    # Fetch all BTC data first
-    print("\n📊 Fetching BTC historical data from yfinance...")
+    print("\n📊 Fetching BTC historical data...")
     try:
         btc_data = fetch_btc_data(start, end)
         print(f"   ✅ Got {len(btc_data)} days of data")
     except Exception as e:
-        print(f"   ❌ Error fetching data: {e}")
+        print(f"   ❌ Error: {e}")
         return
 
-    # Generate weeks
     all_weeks = get_weeks(start, end)
-    print(f"📆 Total weeks: {len(all_weeks)}")
+    print(f"📆 Total weeks to process: {len(all_weeks)}")
 
-    # Initialize DB
-    init_database(str(db_path))
+    # Check existing
+    conn = sqlite3.connect(str(db_path))
+    existing = conn.execute(
+        "SELECT week_start FROM ai_market_regimes WHERE week_start < '2020-01-01'"
+    ).fetchall()
+    conn.close()
+    existing_dates = set(r[0] for r in existing)
+    print(f"   Already have: {len(existing_dates)} weeks")
 
-    # Process each week individually with real data
-    all_regimes = []
+    # Filter weeks to process
+    weeks_to_process = [w for w in all_weeks if w.isoformat() not in existing_dates]
+    print(f"   Need to process: {len(weeks_to_process)} weeks")
+
+    if not weeks_to_process:
+        print("\n✅ All weeks already populated!")
+        return
+
+    input(f"\n⚠️ This will make {len(weeks_to_process)} API calls. Press Enter to continue...")
+
     total_tokens = 0
     regime_counts = {"BULL": 0, "BEAR": 0, "LATERAL": 0, "VOLATILE": 0}
 
-    for i, week_start in enumerate(all_weeks):
-        print(f"\n🔄 Week {i+1}/{len(all_weeks)}: {week_start}", end=" ")
+    for i, week_start in enumerate(weeks_to_process):
+        print(f"\n🔄 Week {i+1}/{len(weeks_to_process)}: {week_start}", end=" ")
 
         try:
-            # Get real market data for this week
             market_data = get_week_data(btc_data, week_start)
-
             if market_data is None:
-                print("⚠️ No data available")
+                print("⚠️ No data")
                 continue
 
-            # Call OpenAI with real data
             regime, tokens = fetch_regime_single(week_start, market_data)
             total_tokens += tokens
 
-            # Save to DB
             if save_regime(str(db_path), regime):
-                all_regimes.append(regime)
                 r = regime.get("regime", "UNKNOWN")
                 regime_counts[r] = regime_counts.get(r, 0) + 1
                 print(f"→ {r} (${market_data['price']:,.0f}, RSI:{market_data['rsi']:.0f}) [{tokens} tokens]")
-            else:
-                print("⚠️ Failed to save")
 
         except Exception as e:
             print(f"❌ Error: {e}")
 
-        # Rate limiting - small delay between calls
-        if i < len(all_weeks) - 1:
-            time.sleep(0.5)
+        time.sleep(0.5)
 
-    # Calculate cost (gpt-5.1: $2/1M input, $8/1M output)
-    estimated_cost = (total_tokens / 1_000_000) * 5  # Average $5/1M
+    estimated_cost = (total_tokens / 1_000_000) * 5
 
     print("\n" + "=" * 60)
-    print(f"✅ COMPLETED: {len(all_regimes)} weeks processed")
-    print(f"💰 Total tokens: {total_tokens:,} (~${estimated_cost:.2f})")
-    print(f"📁 Database: {db_path}")
+    print(f"✅ COMPLETED: {sum(regime_counts.values())} weeks")
+    print(f"💰 Tokens: {total_tokens:,} (~${estimated_cost:.2f})")
     print("=" * 60)
 
-    # Show summary
-    print("\n📊 Regime distribution:")
+    print("\n📊 Regime distribution (2018-2019):")
     for regime, count in sorted(regime_counts.items()):
-        pct = (count / len(all_regimes) * 100) if all_regimes else 0
+        pct = (count / sum(regime_counts.values()) * 100) if sum(regime_counts.values()) > 0 else 0
         print(f"   {regime}: {count} weeks ({pct:.1f}%)")
 
 
 if __name__ == "__main__":
-    populate_database()
+    main()
