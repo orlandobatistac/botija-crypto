@@ -104,7 +104,7 @@ async def analyze_signals(data: List[float]):
 
 @router.get("/current")
 async def get_current_indicators():
-    """Get current market indicators for BTC/USD"""
+    """Get current market indicators for BTC/USD with adaptive thresholds"""
     try:
         from ..services import KrakenClient
         import os
@@ -124,16 +124,23 @@ async def get_current_indicators():
         if ohlc_data and len(ohlc_data) > 0:
             close_prices = [float(candle[4]) for candle in ohlc_data]
             
-            # Calculate indicators
-            ema_20 = TechnicalIndicators.calculate_ema(close_prices, 20)
-            ema_50 = TechnicalIndicators.calculate_ema(close_prices, 50)
-            rsi_14 = TechnicalIndicators.calculate_rsi(close_prices, 14)
+            # Use analyze_signals which includes volatility and adaptive thresholds
+            analysis = TechnicalIndicators.analyze_signals(close_prices)
             
             return {
                 "price": price,
-                "ema_20": ema_20[-1] if ema_20 and len(ema_20) > 0 else None,
-                "ema_50": ema_50[-1] if ema_50 and len(ema_50) > 0 else None,
-                "rsi_14": rsi_14[-1] if rsi_14 and len(rsi_14) > 0 else None,
+                "ema_20": analysis.get('ema20'),
+                "ema_50": analysis.get('ema50'),
+                "rsi_14": analysis.get('rsi14'),
+                "macd": analysis.get('macd'),
+                "macd_signal": analysis.get('macd_signal'),
+                "score": analysis.get('score'),
+                "signal": analysis.get('signal'),
+                # Adaptive thresholds based on volatility
+                "volatility": analysis.get('volatility', 0),
+                "market_regime": analysis.get('market_regime', 'normal'),
+                "buy_threshold": analysis.get('buy_threshold', 65),
+                "sell_threshold": analysis.get('sell_threshold', 35),
                 "timestamp": ohlc_data[-1][0] if ohlc_data else None
             }
         else:
@@ -142,6 +149,10 @@ async def get_current_indicators():
                 "ema_20": None,
                 "ema_50": None,
                 "rsi_14": None,
+                "volatility": 0,
+                "market_regime": "normal",
+                "buy_threshold": 65,
+                "sell_threshold": 35,
                 "error": "No historical data available"
             }
     except Exception as e:
@@ -150,5 +161,9 @@ async def get_current_indicators():
             "ema_20": None,
             "ema_50": None,
             "rsi_14": None,
+            "volatility": 0,
+            "market_regime": "normal",
+            "buy_threshold": 65,
+            "sell_threshold": 35,
             "error": str(e)
         }

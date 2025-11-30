@@ -135,7 +135,7 @@
                 class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
               >
                 <span>🛡️ Conservador</span>
-                <span class="text-xs opacity-70">2-5%/mes</span>
+                <span class="text-xs opacity-70">50% capital</span>
               </button>
               <button
                 @click="setRiskProfile('moderate')"
@@ -143,7 +143,7 @@
                 class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
               >
                 <span>⚖️ Moderado</span>
-                <span class="text-xs opacity-70">5-10%/mes</span>
+                <span class="text-xs opacity-70">75% capital</span>
               </button>
               <button
                 @click="setRiskProfile('aggressive')"
@@ -151,20 +151,37 @@
                 class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
               >
                 <span>🔥 Agresivo</span>
-                <span class="text-xs opacity-70">8-18%/mes</span>
+                <span class="text-xs opacity-70">100% capital</span>
               </button>
+            </div>
+
+            <!-- Market Regime Badge -->
+            <div class="bg-gray-800/50 rounded-lg p-4 min-w-[150px]">
+              <div class="text-xs text-gray-400 mb-1">📊 Régimen de Mercado</div>
+              <div
+                class="text-xl font-bold capitalize"
+                :class="{
+                  'text-green-400': marketRegime === 'calm',
+                  'text-yellow-400': marketRegime === 'normal',
+                  'text-red-400': marketRegime === 'volatile'
+                }"
+                x-text="marketRegime === 'calm' ? '😌 Calmo' : marketRegime === 'volatile' ? '🌊 Volátil' : '📈 Normal'"
+              ></div>
+              <div class="text-xs text-gray-500 mt-1">
+                Volatilidad: <span x-text="currentVolatility"></span>%
+              </div>
             </div>
 
             <!-- Projection Card -->
             <div class="bg-gray-800/50 rounded-lg p-4 min-w-[200px]">
               <div class="text-xs text-gray-400 mb-1">Proyección Mensual</div>
               <div class="text-2xl font-bold text-green-400">
-                <span x-text="riskProfile.projected_monthly_return_min || '5'"></span>% -
-                <span x-text="riskProfile.projected_monthly_return_max || '10'"></span>%
+                <span x-text="riskProfile.projected_monthly_return_min || '3'"></span>% -
+                <span x-text="riskProfile.projected_monthly_return_max || '6'"></span>%
               </div>
               <div class="text-xs text-gray-500 mt-1">
-                Score compra: ≥<span x-text="riskProfile.buy_score_threshold || 65"></span> |
-                Trade: <span x-text="riskProfile.trade_amount_percent || 10"></span>%
+                Score compra: ≥<span x-text="adaptiveBuyThreshold"></span> |
+                Trade: <span x-text="riskProfile.trade_amount_percent || 75"></span>%
               </div>
             </div>
           </div>
@@ -637,7 +654,7 @@
         <div
           class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500"
         >
-          Kraken AI Trading Bot v2.0.0 | Last update:
+          Kraken AI Trading Bot v2.1.0 | Last update:
           <span x-text="toETTime(new Date().toISOString())"></span>
         </div>
       </footer>
@@ -684,10 +701,15 @@
             profile: 'moderate',
             buy_score_threshold: 65,
             sell_score_threshold: 35,
-            trade_amount_percent: 10,
-            projected_monthly_return_min: 5,
-            projected_monthly_return_max: 10
+            trade_amount_percent: 75,
+            projected_monthly_return_min: 3,
+            projected_monthly_return_max: 6
           },
+          // Market regime from adaptive thresholds
+          marketRegime: 'normal',
+          currentVolatility: 0,
+          adaptiveBuyThreshold: 65,
+          adaptiveSellThreshold: 35,
 
           get timeSinceLastCycle() {
             if (!this.schedulerStatus.last_cycle) return "-";
@@ -797,12 +819,16 @@
             await this.fetchLogs();
             await this.fetchCycles();
             await this.fetchRiskProfile();
+            await this.fetchMarketRegime();
 
             // Refresh status every 10 seconds from backend (more frequent for accurate countdown)
             setInterval(() => this.refreshStatus(), 10000);
 
             // Refresh cycles every 10 seconds
             setInterval(() => this.fetchCycles(), 10000);
+
+            // Refresh market regime every 30 seconds
+            setInterval(() => this.fetchMarketRegime(), 30000);
 
             // Local countdown decrement (every second) with auto-refresh at 0
             setInterval(() => {
@@ -981,6 +1007,21 @@
               }
             } catch (err) {
               console.error("Error fetching risk profile:", err);
+            }
+          },
+
+          async fetchMarketRegime() {
+            try {
+              const response = await fetch("/api/v1/indicators/current");
+              if (response.ok) {
+                const data = await response.json();
+                this.marketRegime = data.market_regime || 'normal';
+                this.currentVolatility = data.volatility || 0;
+                this.adaptiveBuyThreshold = data.buy_threshold || 65;
+                this.adaptiveSellThreshold = data.sell_threshold || 35;
+              }
+            } catch (err) {
+              console.error("Error fetching market regime:", err);
             }
           },
 

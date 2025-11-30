@@ -1,5 +1,6 @@
 """
 Technical indicators for trading signals
+With dynamic thresholds based on volatility to reduce overfitting
 """
 
 import pandas as pd
@@ -9,8 +10,58 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Market regime detection thresholds
+VOLATILITY_LOW = 0.02  # < 2% daily volatility = calm market
+VOLATILITY_HIGH = 0.04  # > 4% daily volatility = volatile market
+
+
 class TechnicalIndicators:
-    """Technical analysis indicators"""
+    """Technical analysis indicators with adaptive thresholds"""
+
+    @staticmethod
+    def calculate_volatility(data: List[float], period: int = 20) -> float:
+        """Calculate recent volatility (standard deviation of returns)"""
+        if len(data) < period + 1:
+            return 0.03  # Default medium volatility
+
+        series = pd.Series(data[-period-1:])
+        returns = series.pct_change().dropna()
+        volatility = returns.std()
+        return float(volatility) if not np.isnan(volatility) else 0.03
+
+    @staticmethod
+    def get_market_regime(volatility: float) -> str:
+        """Determine market regime based on volatility"""
+        if volatility < VOLATILITY_LOW:
+            return "calm"
+        elif volatility > VOLATILITY_HIGH:
+            return "volatile"
+        else:
+            return "normal"
+
+    @staticmethod
+    def get_adaptive_thresholds(volatility: float, base_buy: int = 65, base_sell: int = 35) -> Tuple[int, int]:
+        """
+        Adjust thresholds based on market volatility to reduce overfitting.
+
+        In volatile markets: Be more conservative (higher buy threshold, lower sell)
+        In calm markets: Can be more aggressive (lower buy threshold, higher sell)
+        """
+        regime = TechnicalIndicators.get_market_regime(volatility)
+
+        if regime == "volatile":
+            # More conservative in volatile markets
+            buy_threshold = min(base_buy + 10, 85)  # Harder to trigger buy
+            sell_threshold = max(base_sell - 5, 25)  # Easier to trigger sell (protect)
+        elif regime == "calm":
+            # Slightly more aggressive in calm markets
+            buy_threshold = max(base_buy - 5, 55)
+            sell_threshold = min(base_sell + 5, 45)
+        else:
+            buy_threshold = base_buy
+            sell_threshold = base_sell
+
+        return buy_threshold, sell_threshold
 
     @staticmethod
     def calculate_ema(data: List[float], period: int) -> List[float]:
@@ -172,10 +223,15 @@ class TechnicalIndicators:
                 bb_position=bb_position
             )
 
-            # Determine signal based on score
-            if score >= 65:
+            # Calculate volatility and adaptive thresholds
+            volatility = TechnicalIndicators.calculate_volatility(prices)
+            market_regime = TechnicalIndicators.get_market_regime(volatility)
+            buy_threshold, sell_threshold = TechnicalIndicators.get_adaptive_thresholds(volatility)
+
+            # Determine signal based on ADAPTIVE thresholds
+            if score >= buy_threshold:
                 signal = 'BUY'
-            elif score <= 35:
+            elif score <= sell_threshold:
                 signal = 'SELL'
             else:
                 signal = 'HOLD'
@@ -193,6 +249,10 @@ class TechnicalIndicators:
                 'bb_position': round(bb_position, 3),
                 'score': score,
                 'signal': signal,
+                'volatility': round(volatility * 100, 2),  # As percentage
+                'market_regime': market_regime,
+                'buy_threshold': buy_threshold,
+                'sell_threshold': sell_threshold,
                 'ema20_gt_ema50': current_ema20 > current_ema50,
                 'rsi_in_buy_zone': 40 <= current_rsi <= 60,
                 'macd_bullish': current_macd > current_macd_signal

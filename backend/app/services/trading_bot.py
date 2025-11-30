@@ -127,12 +127,21 @@ class TradingBot:
             # Extract closing prices
             closes = [float(candle[4]) for candle in ohlc_data]
 
-            # Calculate technical indicators
+            # Calculate technical indicators (includes adaptive thresholds)
             tech_signals = TechnicalIndicators.analyze_signals(closes)
 
-            # Get thresholds from risk profile
-            buy_threshold = risk_profile['buy_score_threshold']
-            sell_threshold = risk_profile['sell_score_threshold']
+            # Get base thresholds from risk profile
+            base_buy = risk_profile['buy_score_threshold']
+            base_sell = risk_profile['sell_score_threshold']
+            
+            # Use adaptive thresholds if available (based on volatility)
+            buy_threshold = tech_signals.get('buy_threshold', base_buy)
+            sell_threshold = tech_signals.get('sell_threshold', base_sell)
+            market_regime = tech_signals.get('market_regime', 'normal')
+            volatility = tech_signals.get('volatility', 0)
+            
+            self.logger.info(f"Market regime: {market_regime}, volatility: {volatility}%, "
+                           f"adaptive thresholds: buy>={buy_threshold}, sell<={sell_threshold}")
 
             # Get AI signal (only if AI is available)
             if self.ai:
@@ -150,7 +159,7 @@ class TradingBot:
                     tech_score=tech_signals.get('score', 50)
                 )
             else:
-                # Use technical score with risk profile thresholds
+                # Use technical score with ADAPTIVE thresholds
                 tech_score = tech_signals.get('score', 50)
                 if tech_score >= buy_threshold:
                     mock_signal = 'BUY'
