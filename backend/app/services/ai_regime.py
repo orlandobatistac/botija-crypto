@@ -173,31 +173,15 @@ Parameter guidelines:
     @classmethod
     def get_current_regime(cls) -> Dict:
         """
-        Get AI regime parameters for the current week.
-        Calls OpenAI API and caches result for 1 week.
+        Get AI regime parameters for the current cycle.
+        Calls OpenAI API every cycle (every 4 hours) for real-time market analysis.
         Applies momentum multiplier for prolonged trends.
         """
-        global _regime_cache, _cache_expiry
-
-        now = datetime.now()
-
-        # Check cache validity
-        if _cache_expiry and now < _cache_expiry and _regime_cache:
-            logger.debug(f"Using cached regime: {_regime_cache.get('regime')}")
-            return _regime_cache
-
-        # Call OpenAI for fresh analysis
+        # No cache - call OpenAI every cycle for real-time analysis
         regime_data = cls._call_openai()
 
         if regime_data:
-            # Cache for 1 week (until next Monday)
-            days_until_monday = (7 - now.weekday()) % 7
-            if days_until_monday == 0:
-                days_until_monday = 7
-            _cache_expiry = now + timedelta(days=days_until_monday)
-            _cache_expiry = _cache_expiry.replace(hour=0, minute=0, second=0, microsecond=0)
-
-            _regime_cache = {
+            result = {
                 'regime': regime_data.get('regime', 'LATERAL'),
                 'buy_threshold': regime_data.get('buy_threshold', 50),
                 'sell_threshold': regime_data.get('sell_threshold', 35),
@@ -207,17 +191,17 @@ Parameter guidelines:
                 'confidence': regime_data.get('confidence', 0.7),
                 'reasoning': regime_data.get('reasoning', ''),
                 'source': 'openai',
-                'cached_until': _cache_expiry.isoformat()
+                'analyzed_at': datetime.now().isoformat()
             }
 
             # Apply momentum multiplier for prolonged trends
-            _regime_cache = cls._apply_momentum_multiplier(_regime_cache)
+            result = cls._apply_momentum_multiplier(result)
 
-            # Save to DB for history/backup
-            cls._save_to_db(_regime_cache)
+            # Save to DB for history
+            cls._save_to_db(result)
 
-            logger.info(f"AI Regime updated: {_regime_cache['regime']} (cached until {_cache_expiry})")
-            return _regime_cache
+            logger.info(f"AI Regime: {result['regime']} (real-time analysis)")
+            return result
 
         # Try to get from DB as fallback
         db_regime = cls._get_from_db()
