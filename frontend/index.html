@@ -228,29 +228,33 @@
             <table class="w-full text-sm">
               <thead class="bg-gray-700/50 border-b border-gray-600">
                 <tr>
-                  <th class="px-4 py-3 text-left">Time</th>
-                  <th class="px-4 py-3 text-left">Price</th>
-                  <th class="px-4 py-3 text-left">Strategy</th>
-                  <th class="px-4 py-3 text-left">Indicators</th>
-                  <th class="px-4 py-3 text-left">AI Signal</th>
-                  <th class="px-4 py-3 text-left">Action</th>
-                  <th class="px-4 py-3 text-left">Balances</th>
-                  <th class="px-4 py-3 text-left">Mode</th>
+                  <th class="px-3 py-3 text-left text-xs">Time</th>
+                  <th class="px-3 py-3 text-left text-xs">Price</th>
+                  <th class="px-3 py-3 text-left text-xs">Strategy</th>
+                  <th class="px-3 py-3 text-left text-xs">Indicators</th>
+                  <th class="px-3 py-3 text-left text-xs">AI Signal</th>
+                  <th class="px-3 py-3 text-left text-xs">Action</th>
+                  <th class="px-3 py-3 text-left text-xs">Balances</th>
+                  <th class="px-3 py-3 text-left text-xs">Mode</th>
+                  <th class="px-3 py-3 text-right text-xs">Exec</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
                 <template x-for="cycle in paginatedCycles" :key="cycle.id">
                   <tr class="hover:bg-gray-700/30 transition-colors">
-                    <td class="px-4 py-3 text-gray-300">
-                      <div class="text-xs" x-text="toET(cycle.timestamp)"></div>
+                    <td class="px-3 py-3 text-gray-300">
+                      <div class="text-xs font-mono">
+                        <div x-text="toETDate(cycle.timestamp)"></div>
+                        <div class="text-gray-500" x-text="toETTimeShort(cycle.timestamp)"></div>
+                      </div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <div
-                        class="font-semibold text-orange-400"
+                        class="font-semibold text-orange-400 text-sm"
                         x-text="formatUSD(cycle.btc_price)"
                       ></div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <div class="text-xs space-y-1">
                         <!-- AI Regime -->
                         <div class="flex items-center gap-1">
@@ -269,7 +273,7 @@
                         <!-- Leverage -->
                         <div>
                           <span class="text-gray-500">Leverage:</span>
-                          <span 
+                          <span
                             :class="cycle.leverage_multiplier > 1 ? 'text-purple-400 font-bold' : 'text-gray-400'"
                             x-text="cycle.leverage_multiplier ? 'x' + cycle.leverage_multiplier : 'x1.0'"
                           ></span>
@@ -281,7 +285,7 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <div class="text-xs space-y-1">
                         <div>
                           <span class="text-gray-500">EMA20:</span>
@@ -297,14 +301,14 @@
                         </div>
                         <div>
                           <span class="text-gray-500">RSI:</span>
-                          <span 
+                          <span
                             :class="cycle.rsi14 > 70 ? 'text-red-400' : cycle.rsi14 < 30 ? 'text-green-400' : 'text-gray-300'"
                             x-text="formatNumber(cycle.rsi14, 1)"
                           ></span>
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <div class="flex items-center gap-2">
                         <span
                           class="px-2 py-1 rounded text-xs font-semibold"
@@ -328,7 +332,7 @@
                         :title="cycle.ai_reason"
                       ></div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <span
                         class="px-2 py-1 rounded text-xs font-bold"
                         :class="{
@@ -346,7 +350,7 @@
                         x-show="cycle.trade_id"
                       ></div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <div class="text-xs space-y-1">
                         <div>
                           <span
@@ -364,7 +368,7 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-3">
+                    <td class="px-3 py-3">
                       <div class="flex flex-col gap-1">
                         <span
                           class="px-2 py-1 rounded text-xs font-semibold"
@@ -381,7 +385,7 @@
                         </span>
                       </div>
                     </td>
-                    <td class="px-4 py-3 text-right">
+                    <td class="px-3 py-3 text-right">
                       <span
                         class="text-xs text-gray-400"
                         x-text="cycle.execution_time_ms + 'ms'"
@@ -710,6 +714,27 @@
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit",
+              hour12: true,
+            });
+          },
+
+          // Compact date format MM/DD
+          toETDate(timestamp) {
+            if (!timestamp) return "";
+            return new Date(timestamp).toLocaleDateString("en-US", {
+              timeZone: "America/New_York",
+              month: "2-digit",
+              day: "2-digit",
+            });
+          },
+
+          // Compact time format HH:MM PM
+          toETTimeShort(timestamp) {
+            if (!timestamp) return "";
+            return new Date(timestamp).toLocaleTimeString("en-US", {
+              timeZone: "America/New_York",
+              hour: "2-digit",
+              minute: "2-digit",
               hour12: true,
             });
           },
