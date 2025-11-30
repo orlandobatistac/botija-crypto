@@ -105,11 +105,23 @@ class TradingBot:
                     ema50=tech_signals.get('ema50', 0),
                     rsi=tech_signals.get('rsi14', 0),
                     btc_balance=btc_balance,
-                    usd_balance=usd_balance
+                    usd_balance=usd_balance,
+                    macd=tech_signals.get('macd', 0),
+                    macd_signal=tech_signals.get('macd_signal', 0),
+                    macd_hist=tech_signals.get('macd_hist', 0),
+                    bb_position=tech_signals.get('bb_position', 0.5),
+                    tech_score=tech_signals.get('score', 50)
                 )
             else:
-                # Mock AI signal for paper trading
-                ai_signal = {'signal': 'HOLD', 'confidence': 0.5}
+                # Use technical score for paper trading without AI
+                tech_score = tech_signals.get('score', 50)
+                if tech_score >= 65:
+                    mock_signal = 'BUY'
+                elif tech_score <= 35:
+                    mock_signal = 'SELL'
+                else:
+                    mock_signal = 'HOLD'
+                ai_signal = {'signal': mock_signal, 'confidence': tech_score / 100, 'reason': f'Score técnico: {tech_score}'}
 
             # Calculate dynamic amounts
             trade_amount = self._calculate_trade_amount(usd_balance)
