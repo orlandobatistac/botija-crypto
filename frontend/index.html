@@ -124,7 +124,7 @@
               <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
                 ⚙️ Risk Profile
               </h3>
-              <p class="text-xs text-amber-300/70 mt-1">Control de agresividad del bot</p>
+              <p class="text-xs text-amber-300/70 mt-1">Bot aggressiveness control</p>
             </div>
 
             <!-- Profile Selector -->
@@ -134,7 +134,7 @@
                 :class="riskProfile.profile === 'conservative' ? 'bg-green-600 ring-2 ring-green-400' : 'bg-gray-700 hover:bg-gray-600'"
                 class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
               >
-                <span>🛡️ Conservador</span>
+                <span>🛡️ Conservative</span>
                 <span class="text-xs opacity-70">50% capital</span>
               </button>
               <button
@@ -142,7 +142,7 @@
                 :class="riskProfile.profile === 'moderate' ? 'bg-yellow-600 ring-2 ring-yellow-400' : 'bg-gray-700 hover:bg-gray-600'"
                 class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
               >
-                <span>⚖️ Moderado</span>
+                <span>⚖️ Moderate</span>
                 <span class="text-xs opacity-70">75% capital</span>
               </button>
               <button
@@ -150,14 +150,14 @@
                 :class="riskProfile.profile === 'aggressive' ? 'bg-red-600 ring-2 ring-red-400' : 'bg-gray-700 hover:bg-gray-600'"
                 class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
               >
-                <span>🔥 Agresivo</span>
+                <span>🔥 Aggressive</span>
                 <span class="text-xs opacity-70">100% capital</span>
               </button>
             </div>
 
             <!-- Market Regime Badge -->
             <div class="bg-gray-800/50 rounded-lg p-4 min-w-[150px]">
-              <div class="text-xs text-gray-400 mb-1">📊 Régimen de Mercado</div>
+              <div class="text-xs text-gray-400 mb-1">📊 Market Regime</div>
               <div
                 class="text-xl font-bold capitalize"
                 :class="{
@@ -165,22 +165,22 @@
                   'text-yellow-400': marketRegime === 'normal',
                   'text-red-400': marketRegime === 'volatile'
                 }"
-                x-text="marketRegime === 'calm' ? '😌 Calmo' : marketRegime === 'volatile' ? '🌊 Volátil' : '📈 Normal'"
+                x-text="marketRegime === 'calm' ? '😌 Calm' : marketRegime === 'volatile' ? '🌊 Volatile' : '📈 Normal'"
               ></div>
               <div class="text-xs text-gray-500 mt-1">
-                Volatilidad: <span x-text="currentVolatility"></span>%
+                Volatility: <span x-text="currentVolatility"></span>%
               </div>
             </div>
 
             <!-- Projection Card -->
             <div class="bg-gray-800/50 rounded-lg p-4 min-w-[200px]">
-              <div class="text-xs text-gray-400 mb-1">Proyección Mensual</div>
+              <div class="text-xs text-gray-400 mb-1">Monthly Projection</div>
               <div class="text-2xl font-bold text-green-400">
                 <span x-text="riskProfile.projected_monthly_return_min || '3'"></span>% -
                 <span x-text="riskProfile.projected_monthly_return_max || '6'"></span>%
               </div>
               <div class="text-xs text-gray-500 mt-1">
-                Score compra: ≥<span x-text="adaptiveBuyThreshold"></span> |
+                Buy score: ≥<span x-text="adaptiveBuyThreshold"></span> |
                 Trade: <span x-text="riskProfile.trade_amount_percent || 75"></span>%
               </div>
             </div>

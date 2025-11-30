@@ -33,33 +33,33 @@ class AIRegimeService:
     }
 
     PROMPT_TEMPLATE = """
-Eres un trader profesional de BTC. Analiza el mercado ACTUAL y proporciona parámetros de trading.
+You are a professional BTC trader. Analyze the CURRENT market and provide trading parameters.
 
-Fecha actual: {current_date}
+Current date: {current_date}
 
-Basándote en:
-- Tendencia reciente del precio de BTC
-- Noticias y eventos actuales del mercado crypto
-- Sentimiento general del mercado
-- Volatilidad actual
+Based on:
+- Recent BTC price trend
+- Current crypto market news and events
+- General market sentiment
+- Current volatility
 
-Responde SOLO con JSON válido:
+Respond ONLY with valid JSON:
 {{
     "regime": "BULL|BEAR|LATERAL|VOLATILE",
-    "buy_threshold": <número 40-70>,
-    "sell_threshold": <número 25-45>,
-    "capital_percent": <número 40-100>,
-    "atr_multiplier": <número 1.0-2.5>,
-    "stop_loss_percent": <número 1.5-4.0>,
-    "confidence": <número 0.5-1.0>,
-    "reasoning": "<explicación breve del análisis>"
+    "buy_threshold": <number 40-70>,
+    "sell_threshold": <number 25-45>,
+    "capital_percent": <number 40-100>,
+    "atr_multiplier": <number 1.0-2.5>,
+    "stop_loss_percent": <number 1.5-4.0>,
+    "confidence": <number 0.5-1.0>,
+    "reasoning": "<brief analysis explanation>"
 }}
 
-Guía de parámetros:
-- BULL: buy_threshold bajo (40-50), capital alto (70-90%)
-- BEAR: buy_threshold alto (60-70), capital bajo (40-60%)
-- LATERAL: buy_threshold medio (50-60), capital medio (50-70%)
-- VOLATILE: buy_threshold alto (55-65), capital bajo (50-60%)
+Parameter guidelines:
+- BULL: low buy_threshold (40-50), high capital (70-90%)
+- BEAR: high buy_threshold (60-70), low capital (40-60%)
+- LATERAL: medium buy_threshold (50-60), medium capital (50-70%)
+- VOLATILE: high buy_threshold (55-65), low capital (50-60%)
 """
 
     @classmethod
