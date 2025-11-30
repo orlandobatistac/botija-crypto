@@ -99,10 +99,83 @@ Parameter guidelines:
             return None
 
     @classmethod
+    def _get_recent_regimes(cls, n_weeks: int = 4) -> list:
+        """Get the last N weeks of regimes from DB for momentum calculation"""
+        try:
+            from ..database import SessionLocal
+            from ..models import AIMarketRegime
+
+            db = SessionLocal()
+
+            regimes = db.query(AIMarketRegime).order_by(
+                AIMarketRegime.week_start.desc()
+            ).limit(n_weeks).all()
+
+            db.close()
+
+            return [r.regime for r in regimes]
+        except Exception as e:
+            logger.error(f"Error getting recent regimes: {e}")
+            return []
+
+    @classmethod
+    def _apply_momentum_multiplier(cls, regime_data: Dict) -> Dict:
+        """
+        Apply momentum multiplier for prolonged BULL/BEAR markets.
+        If 3+ consecutive weeks of same regime, adjust thresholds.
+        """
+        recent_regimes = cls._get_recent_regimes(4)
+        current_regime = regime_data.get('regime', 'LATERAL')
+
+        if len(recent_regimes) < 3:
+            return regime_data
+
+        # Count consecutive same-regime weeks
+        streak = 0
+        for r in recent_regimes:
+            if r == current_regime:
+                streak += 1
+            else:
+                break
+
+        # Apply momentum adjustment if 3+ weeks streak
+        if streak >= 3:
+            if current_regime == 'BULL':
+                # More aggressive in prolonged bull: lower buy threshold, higher capital
+                original_buy = regime_data.get('buy_threshold', 50)
+                original_capital = regime_data.get('capital_percent', 75)
+
+                regime_data['buy_threshold'] = max(40, original_buy - 10)
+                regime_data['capital_percent'] = min(95, original_capital + 10)
+                regime_data['momentum_applied'] = True
+                regime_data['momentum_streak'] = streak
+
+                logger.info(f"Momentum multiplier applied: {streak} weeks BULL streak. "
+                           f"Buy threshold: {original_buy} -> {regime_data['buy_threshold']}, "
+                           f"Capital: {original_capital}% -> {regime_data['capital_percent']}%")
+
+            elif current_regime == 'BEAR':
+                # More defensive in prolonged bear: higher buy threshold, lower capital
+                original_buy = regime_data.get('buy_threshold', 50)
+                original_capital = regime_data.get('capital_percent', 75)
+
+                regime_data['buy_threshold'] = min(70, original_buy + 10)
+                regime_data['capital_percent'] = max(30, original_capital - 15)
+                regime_data['momentum_applied'] = True
+                regime_data['momentum_streak'] = streak
+
+                logger.info(f"Momentum multiplier applied: {streak} weeks BEAR streak. "
+                           f"Buy threshold: {original_buy} -> {regime_data['buy_threshold']}, "
+                           f"Capital: {original_capital}% -> {regime_data['capital_percent']}%")
+
+        return regime_data
+
+    @classmethod
     def get_current_regime(cls) -> Dict:
         """
         Get AI regime parameters for the current week.
         Calls OpenAI API and caches result for 1 week.
+        Applies momentum multiplier for prolonged trends.
         """
         global _regime_cache, _cache_expiry
 
@@ -136,6 +209,9 @@ Parameter guidelines:
                 'source': 'openai',
                 'cached_until': _cache_expiry.isoformat()
             }
+
+            # Apply momentum multiplier for prolonged trends
+            _regime_cache = cls._apply_momentum_multiplier(_regime_cache)
 
             # Save to DB for history/backup
             cls._save_to_db(_regime_cache)
