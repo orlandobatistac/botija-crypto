@@ -1,6 +1,6 @@
 """
 AI Regime Service - Gets market regime parameters from OpenAI in real-time
-Caches results for 1 week to minimize API costs
+Uses real market data injection (same as backtest) for honest analysis
 """
 
 import logging
@@ -32,39 +32,133 @@ class AIRegimeService:
         'source': 'default'
     }
 
-    PROMPT_TEMPLATE = """
-You are a professional BTC trader. Analyze the CURRENT market and provide trading parameters.
+    # Prompt with real data injection (same as backtest)
+    PROMPT_TEMPLATE = """You are an AGGRESSIVE BTC swing trader analyzing this week.
+Date: {current_date}
 
-Current date: {current_date}
+=== REAL MARKET DATA (no simulation) ===
+Current Price: ${price:,.0f}
+7-day Change: {change_7d:+.1f}%
+30-day Change: {change_30d:+.1f}%
+RSI (14): {rsi:.1f}
+EMA20 vs EMA50: {ema_signal}
+Weekly Volatility: {volatility:.1f}%
+Volume vs 20-week avg: {volume_ratio:.1f}x
+Price vs 52-week High: {vs_52w_high:.1f}%
+Price vs 52-week Low: {vs_52w_low:+.1f}%
 
-Based on:
-- Recent BTC price trend
-- Current crypto market news and events
-- General market sentiment
-- Current volatility
+=== REGIME GUIDELINES ===
+BULL (strong uptrend): buy_threshold 40-50, capital 80-95%
+  - RSI < 70, price above EMAs, positive momentum
+BEAR (strong downtrend): buy_threshold 60-70, capital 30-50%
+  - RSI > 30 (oversold = opportunity), price below EMAs
+LATERAL (consolidation): buy_threshold 50-55, capital 50-70%
+  - RSI 40-60, price between EMAs, low volatility
+VOLATILE (high uncertainty): buy_threshold 55-65, capital 40-60%
+  - Wide price swings, news-driven, elevated volatility
 
-Respond ONLY with valid JSON:
+=== IMPORTANT ===
+- Be AGGRESSIVE in clear trends (BULL/BEAR)
+- Only use VOLATILE when volatility is extreme (>5% weekly)
+- LATERAL is for genuine consolidation, not uncertainty
+- Lower buy_threshold = more trades = better for swing trading
+
+Respond ONLY with this JSON format:
 {{
-    "regime": "BULL|BEAR|LATERAL|VOLATILE",
-    "buy_threshold": <number 40-70>,
-    "sell_threshold": <number 25-45>,
-    "capital_percent": <number 40-100>,
-    "atr_multiplier": <number 1.0-2.5>,
-    "stop_loss_percent": <number 1.5-4.0>,
-    "confidence": <number 0.5-1.0>,
-    "reasoning": "<brief analysis explanation>"
+  "regime": "BULL|BEAR|LATERAL|VOLATILE",
+  "buy_threshold": 45,
+  "sell_threshold": 35,
+  "capital_percent": 85,
+  "atr_multiplier": 1.5,
+  "stop_loss_percent": 2.5,
+  "confidence": 0.8,
+  "reasoning": "Brief explanation (max 80 chars)"
 }}
-
-Parameter guidelines:
-- BULL: low buy_threshold (40-50), high capital (70-90%)
-- BEAR: high buy_threshold (60-70), low capital (40-60%)
-- LATERAL: medium buy_threshold (50-60), medium capital (50-70%)
-- VOLATILE: high buy_threshold (55-65), low capital (50-60%)
 """
 
     @classmethod
+    def _fetch_market_data(cls) -> Optional[Dict]:
+        """Fetch real market data from Kraken for AI analysis"""
+        try:
+            from .kraken_client import KrakenClient
+            import pandas as pd
+            
+            # Use public API (no auth needed)
+            client = KrakenClient(api_key="", api_secret="")
+            
+            # Get OHLC data (daily candles, 720 = 720 days)
+            ohlc = client.get_ohlc(interval=1440)  # Daily candles
+            if not ohlc or len(ohlc) < 50:
+                logger.warning("Insufficient OHLC data for regime analysis")
+                return None
+            
+            # Convert to DataFrame
+            df = pd.DataFrame(ohlc, columns=['time', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
+            df['close'] = df['close'].astype(float)
+            df['volume'] = df['volume'].astype(float)
+            
+            # Current price
+            price = df['close'].iloc[-1]
+            
+            # Price changes
+            if len(df) >= 7:
+                price_7d = df['close'].iloc[-7]
+                change_7d = ((price - price_7d) / price_7d) * 100
+            else:
+                change_7d = 0
+                
+            if len(df) >= 30:
+                price_30d = df['close'].iloc[-30]
+                change_30d = ((price - price_30d) / price_30d) * 100
+            else:
+                change_30d = 0
+            
+            # Calculate RSI
+            delta = df['close'].diff()
+            gain = delta.where(delta > 0, 0).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50
+            
+            # Calculate EMAs
+            ema20 = df['close'].ewm(span=20).mean().iloc[-1]
+            ema50 = df['close'].ewm(span=50).mean().iloc[-1]
+            ema_signal = "BULLISH" if ema20 > ema50 else "BEARISH"
+            
+            # Volatility (7-day)
+            returns = df['close'].pct_change()
+            volatility = returns.tail(7).std() * 100
+            
+            # Volume ratio
+            vol_ma20 = df['volume'].rolling(20).mean().iloc[-1]
+            volume_ratio = df['volume'].iloc[-1] / vol_ma20 if vol_ma20 > 0 else 1.0
+            
+            # 52-week high/low
+            high_52w = df['close'].tail(252).max() if len(df) >= 252 else df['close'].max()
+            low_52w = df['close'].tail(252).min() if len(df) >= 252 else df['close'].min()
+            vs_52w_high = ((price - high_52w) / high_52w) * 100
+            vs_52w_low = ((price - low_52w) / low_52w) * 100
+            
+            return {
+                'price': price,
+                'change_7d': change_7d,
+                'change_30d': change_30d,
+                'rsi': current_rsi,
+                'ema_signal': ema_signal,
+                'volatility': volatility if not pd.isna(volatility) else 2.0,
+                'volume_ratio': volume_ratio if not pd.isna(volume_ratio) else 1.0,
+                'vs_52w_high': vs_52w_high,
+                'vs_52w_low': vs_52w_low
+            }
+            
+        except Exception as e:
+            logger.error(f"Error fetching market data: {e}")
+            return None
+
+    @classmethod
     def _call_openai(cls) -> Optional[Dict]:
-        """Call OpenAI API to get current market regime"""
+        """Call OpenAI API with real market data for regime analysis"""
         try:
             from openai import OpenAI
 
@@ -73,15 +167,24 @@ Parameter guidelines:
                 logger.warning("OPENAI_API_KEY not set, using defaults")
                 return None
 
+            # Fetch real market data
+            market_data = cls._fetch_market_data()
+            if not market_data:
+                logger.warning("Could not fetch market data, using fallback")
+                return None
+
             client = OpenAI(api_key=api_key)
 
             current_date = datetime.now().strftime("%Y-%m-%d")
-            prompt = cls.PROMPT_TEMPLATE.format(current_date=current_date)
+            prompt = cls.PROMPT_TEMPLATE.format(
+                current_date=current_date,
+                **market_data
+            )
 
-            logger.info("Calling OpenAI for market regime analysis...")
+            logger.info(f"Calling OpenAI for regime analysis (BTC=${market_data['price']:,.0f}, RSI={market_data['rsi']:.0f})")
 
             response = client.chat.completions.create(
-                model="gpt-5.1",
+                model="gpt-4.1",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 response_format={"type": "json_object"}
@@ -90,7 +193,7 @@ Parameter guidelines:
             content = response.choices[0].message.content
             data = json.loads(content)
 
-            logger.info(f"OpenAI regime response: {data.get('regime')} - {data.get('reasoning', '')[:50]}")
+            logger.info(f"OpenAI regime: {data.get('regime')} - {data.get('reasoning', '')[:50]}")
 
             return data
 
