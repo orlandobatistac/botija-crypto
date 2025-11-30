@@ -104,10 +104,14 @@ async def analyze_signals(data: List[float]):
 
 @router.get("/current")
 async def get_current_indicators():
-    """Get current market indicators for BTC/USD with adaptive thresholds"""
+    """Get current market indicators for BTC/USD with AI regime parameters"""
     try:
         from ..services import KrakenClient
+        from ..services.ai_regime import AIRegimeService
         import os
+
+        # Get AI regime for current week
+        ai_regime = AIRegimeService.get_current_regime()
 
         # Initialize Kraken client
         kraken = KrakenClient(
@@ -136,11 +140,16 @@ async def get_current_indicators():
                 "macd_signal": analysis.get('macd_signal'),
                 "score": analysis.get('score'),
                 "signal": analysis.get('signal'),
-                # Adaptive thresholds based on volatility
+                # Volatility info
                 "volatility": analysis.get('volatility', 0),
                 "market_regime": analysis.get('market_regime', 'normal'),
-                "buy_threshold": analysis.get('buy_threshold', 65),
-                "sell_threshold": analysis.get('sell_threshold', 35),
+                # AI Regime parameters (from DB)
+                "ai_regime": ai_regime['regime'],
+                "ai_buy_threshold": ai_regime['buy_threshold'],
+                "ai_sell_threshold": ai_regime['sell_threshold'],
+                "ai_capital_percent": ai_regime['capital_percent'],
+                "ai_confidence": ai_regime['confidence'],
+                "ai_reasoning": ai_regime['reasoning'],
                 "timestamp": ohlc_data[-1][0] if ohlc_data else None
             }
         else:
@@ -151,8 +160,10 @@ async def get_current_indicators():
                 "rsi_14": None,
                 "volatility": 0,
                 "market_regime": "normal",
-                "buy_threshold": 65,
-                "sell_threshold": 35,
+                "ai_regime": ai_regime['regime'],
+                "ai_buy_threshold": ai_regime['buy_threshold'],
+                "ai_sell_threshold": ai_regime['sell_threshold'],
+                "ai_capital_percent": ai_regime['capital_percent'],
                 "error": "No historical data available"
             }
     except Exception as e:
@@ -163,7 +174,9 @@ async def get_current_indicators():
             "rsi_14": None,
             "volatility": 0,
             "market_regime": "normal",
-            "buy_threshold": 65,
-            "sell_threshold": 35,
+            "ai_regime": "LATERAL",
+            "ai_buy_threshold": 50,
+            "ai_sell_threshold": 35,
+            "ai_capital_percent": 75,
             "error": str(e)
         }

@@ -107,3 +107,21 @@ class RiskProfile(Base):
     trailing_stop_percent = Column(Float, default=2.0)  # % trailing stop
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+
+class AIMarketRegime(Base):
+    """AI-generated market regime parameters per week"""
+    __tablename__ = "ai_market_regimes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    week_start = Column(DateTime, nullable=False, index=True)
+    week_end = Column(DateTime, nullable=True)
+    regime = Column(String, nullable=False)  # BULL, BEAR, LATERAL, VOLATILE
+    buy_threshold = Column(Integer, default=50)
+    sell_threshold = Column(Integer, default=35)
+    capital_percent = Column(Integer, default=75)
+    atr_multiplier = Column(Float, default=1.5)
+    stop_loss_percent = Column(Float, default=2.0)
+    confidence = Column(Float, default=0.7)
+    reasoning = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+

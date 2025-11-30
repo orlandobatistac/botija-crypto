@@ -13,6 +13,7 @@ from .ai_validator import AISignalValidator
 from .telegram_alerts import TelegramAlerts
 from .trailing_stop import TrailingStop
 from .modes.factory import get_trading_engine
+from .ai_regime import AIRegimeService
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class TradingBot:
         return usd_balance * (self.min_balance_percent / 100)  # Use percentage
 
     def _get_risk_profile(self) -> Dict:
-        """Get current risk profile from database"""
+        """Get current risk profile from database, enhanced with AI regime"""
         try:
             from ..database import SessionLocal
             from ..models import RiskProfile
@@ -70,24 +71,35 @@ class TradingBot:
             profile = db.query(RiskProfile).first()
             db.close()
 
+            # Get AI regime for current week
+            ai_regime = AIRegimeService.get_current_regime()
+
             if profile:
+                # Merge profile with AI regime (AI regime takes priority for thresholds)
                 return {
                     'profile': profile.profile,
-                    'buy_score_threshold': profile.buy_score_threshold,
-                    'sell_score_threshold': profile.sell_score_threshold,
-                    'trade_amount_percent': profile.trade_amount_percent,
-                    'trailing_stop_percent': profile.trailing_stop_percent
+                    'buy_score_threshold': ai_regime['buy_threshold'],  # AI regime
+                    'sell_score_threshold': ai_regime['sell_threshold'],  # AI regime
+                    'trade_amount_percent': ai_regime['capital_percent'],  # AI regime
+                    'trailing_stop_percent': ai_regime['stop_loss_percent'],  # AI regime
+                    'ai_regime': ai_regime['regime'],
+                    'ai_confidence': ai_regime['confidence'],
+                    'ai_reasoning': ai_regime['reasoning']
                 }
         except Exception as e:
             self.logger.warning(f"Could not load risk profile: {e}")
 
-        # Default moderate profile
+        # Default moderate profile with AI regime fallback
+        ai_regime = AIRegimeService.get_current_regime()
         return {
-            'profile': 'moderate',
-            'buy_score_threshold': 65,
-            'sell_score_threshold': 35,
-            'trade_amount_percent': 10.0,
-            'trailing_stop_percent': 2.0
+            'profile': 'ai_dynamic',
+            'buy_score_threshold': ai_regime['buy_threshold'],
+            'sell_score_threshold': ai_regime['sell_threshold'],
+            'trade_amount_percent': ai_regime['capital_percent'],
+            'trailing_stop_percent': ai_regime['stop_loss_percent'],
+            'ai_regime': ai_regime['regime'],
+            'ai_confidence': ai_regime['confidence'],
+            'ai_reasoning': ai_regime['reasoning']
         }
 
     async def analyze_market(self) -> Dict:
@@ -140,8 +152,10 @@ class TradingBot:
             market_regime = tech_signals.get('market_regime', 'normal')
             volatility = tech_signals.get('volatility', 0)
 
-            self.logger.info(f"Market regime: {market_regime}, volatility: {volatility}%, "
-                           f"adaptive thresholds: buy>={buy_threshold}, sell<={sell_threshold}")
+            self.logger.info(f"AI Regime: {risk_profile.get('ai_regime', 'N/A')}, "
+                           f"Market volatility: {volatility:.1f}%, "
+                           f"Thresholds: buy>={buy_threshold}, sell<={sell_threshold}, "
+                           f"Capital: {risk_profile.get('trade_amount_percent', 75)}%")
 
             # Get AI signal (only if AI is available)
             if self.ai:

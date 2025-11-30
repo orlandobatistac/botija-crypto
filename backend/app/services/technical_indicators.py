@@ -43,9 +43,9 @@ class TechnicalIndicators:
     def get_adaptive_thresholds(volatility: float, base_buy: int = 50, base_sell: int = 35) -> Tuple[int, int]:
         """
         Adjust thresholds based on market volatility to reduce overfitting.
-        
+
         Base thresholds optimized from backtest: buy>=50, sell<=35 = +1019% vs B&H +950%
-        
+
         In volatile markets: Be more conservative (higher buy threshold, lower sell)
         In calm markets: Can be more aggressive (lower buy threshold, higher sell)
         """
