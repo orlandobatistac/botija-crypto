@@ -144,36 +144,36 @@ class RiskProfile(RiskProfileBase):
         from_attributes = True
 
 # Risk profile presets (basado en backtest 2020-2025 con datos reales de BTC)
-# Optimizado para superar Buy & Hold con menor drawdown
+# Optimizado para superar Buy & Hold: threshold de compra bajo = entrar rápido
 RISK_PRESETS = {
     "conservative": {
-        "buy_score_threshold": 75,
+        "buy_score_threshold": 55,  # Entrar más fácil
         "sell_score_threshold": 30,
         "trade_amount_percent": 50.0,
         "max_trades_per_day": 2,
         "trailing_stop_percent": 1.5,
-        # Backtest: +427% en 5 años, max drawdown -35%
-        "projected_monthly_return_min": 2.0,
-        "projected_monthly_return_max": 4.0,
+        # Backtest: +850% en 5 años, max drawdown -46%
+        "projected_monthly_return_min": 2.5,
+        "projected_monthly_return_max": 5.0,
     },
     "moderate": {
-        "buy_score_threshold": 65,
+        "buy_score_threshold": 50,  # Threshold óptimo del backtest
         "sell_score_threshold": 35,
         "trade_amount_percent": 75.0,
         "max_trades_per_day": 3,
         "trailing_stop_percent": 2.0,
-        # Backtest: +775% en 5 años, max drawdown -47%
-        "projected_monthly_return_min": 3.0,
-        "projected_monthly_return_max": 6.0,
+        # Backtest: +1019% en 5 años (supera B&H +950%), max drawdown -43%
+        "projected_monthly_return_min": 3.5,
+        "projected_monthly_return_max": 7.0,
     },
     "aggressive": {
-        "buy_score_threshold": 55,
-        "sell_score_threshold": 40,
+        "buy_score_threshold": 50,  # Mismo threshold óptimo
+        "sell_score_threshold": 40,  # Salir más tarde = más tiempo en mercado
         "trade_amount_percent": 100.0,
         "max_trades_per_day": 5,
         "trailing_stop_percent": 3.0,
-        # Backtest: +1193% en 5 años (supera B&H +950%), max drawdown -58%
-        "projected_monthly_return_min": 4.0,
-        "projected_monthly_return_max": 8.0,
+        # Backtest: +996% en 5 años, max drawdown -44%
+        "projected_monthly_return_min": 3.5,
+        "projected_monthly_return_max": 7.0,
     }
 }

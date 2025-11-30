@@ -43,9 +43,9 @@ async def calculate_rsi(data: List[float], period: int = 14):
 
 @router.post("/macd")
 async def calculate_macd(
-    data: List[float], 
-    fast: int = 12, 
-    slow: int = 26, 
+    data: List[float],
+    fast: int = 12,
+    slow: int = 26,
     signal: int = 9
 ):
     """Calculate MACD indicator"""
@@ -70,8 +70,8 @@ async def calculate_macd(
 
 @router.post("/bollinger")
 async def calculate_bollinger(
-    data: List[float], 
-    period: int = 20, 
+    data: List[float],
+    period: int = 20,
     std_dev: float = 2.0
 ):
     """Calculate Bollinger Bands"""
@@ -108,25 +108,25 @@ async def get_current_indicators():
     try:
         from ..services import KrakenClient
         import os
-        
+
         # Initialize Kraken client
         kraken = KrakenClient(
             api_key=os.getenv('KRAKEN_API_KEY', ''),
             secret_key=os.getenv('KRAKEN_SECRET_KEY', '')
         )
-        
+
         # Get current price
         price = kraken.get_current_price('XBTUSDT')
-        
+
         # Get historical data for indicators
         ohlc_data = kraken.get_ohlc('XBTUSDT', interval=240, count=100)
-        
+
         if ohlc_data and len(ohlc_data) > 0:
             close_prices = [float(candle[4]) for candle in ohlc_data]
-            
+
             # Use analyze_signals which includes volatility and adaptive thresholds
             analysis = TechnicalIndicators.analyze_signals(close_prices)
-            
+
             return {
                 "price": price,
                 "ema_20": analysis.get('ema20'),

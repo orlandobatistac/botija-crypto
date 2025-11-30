@@ -133,13 +133,13 @@ class TradingBot:
             # Get base thresholds from risk profile
             base_buy = risk_profile['buy_score_threshold']
             base_sell = risk_profile['sell_score_threshold']
-            
+
             # Use adaptive thresholds if available (based on volatility)
             buy_threshold = tech_signals.get('buy_threshold', base_buy)
             sell_threshold = tech_signals.get('sell_threshold', base_sell)
             market_regime = tech_signals.get('market_regime', 'normal')
             volatility = tech_signals.get('volatility', 0)
-            
+
             self.logger.info(f"Market regime: {market_regime}, volatility: {volatility}%, "
                            f"adaptive thresholds: buy>={buy_threshold}, sell<={sell_threshold}")
 

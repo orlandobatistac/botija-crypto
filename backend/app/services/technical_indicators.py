@@ -40,22 +40,24 @@ class TechnicalIndicators:
             return "normal"
 
     @staticmethod
-    def get_adaptive_thresholds(volatility: float, base_buy: int = 65, base_sell: int = 35) -> Tuple[int, int]:
+    def get_adaptive_thresholds(volatility: float, base_buy: int = 50, base_sell: int = 35) -> Tuple[int, int]:
         """
         Adjust thresholds based on market volatility to reduce overfitting.
-
+        
+        Base thresholds optimized from backtest: buy>=50, sell<=35 = +1019% vs B&H +950%
+        
         In volatile markets: Be more conservative (higher buy threshold, lower sell)
         In calm markets: Can be more aggressive (lower buy threshold, higher sell)
         """
         regime = TechnicalIndicators.get_market_regime(volatility)
 
         if regime == "volatile":
-            # More conservative in volatile markets
-            buy_threshold = min(base_buy + 10, 85)  # Harder to trigger buy
+            # More conservative in volatile markets - protect capital
+            buy_threshold = min(base_buy + 10, 70)  # Harder to trigger buy
             sell_threshold = max(base_sell - 5, 25)  # Easier to trigger sell (protect)
         elif regime == "calm":
-            # Slightly more aggressive in calm markets
-            buy_threshold = max(base_buy - 5, 55)
+            # More aggressive in calm markets - capture gains
+            buy_threshold = max(base_buy - 5, 45)
             sell_threshold = min(base_sell + 5, 45)
         else:
             buy_threshold = base_buy
