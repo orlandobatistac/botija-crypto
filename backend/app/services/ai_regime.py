@@ -81,7 +81,7 @@ Parameter guidelines:
             logger.info("Calling OpenAI for market regime analysis...")
 
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5.1",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 response_format={"type": "json_object"}
