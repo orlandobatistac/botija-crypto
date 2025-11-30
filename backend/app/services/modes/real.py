@@ -3,7 +3,7 @@ Real trading mode - executes actual trades on Kraken
 """
 
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 from ..kraken_client import KrakenClient
 from .base import TradingEngine
 
@@ -34,12 +34,13 @@ class RealTradingEngine(TradingEngine):
             self.logger.error(f"Error loading balances: {e}")
             return {'btc': 0.0, 'usd': 0.0}
     
-    def buy(self, price: float, usd_amount: float) -> Tuple[bool, str]:
-        """Execute real buy order on Kraken"""
+    def buy(self, price: float, usd_amount: float, ai_regime: Optional[str] = None) -> Tuple[bool, str]:
+        """Execute real buy order on Kraken (always SPOT, shadow tracks margin)"""
         try:
             volume = usd_amount / price
+            shadow_lev = "x1.5" if ai_regime == 'BULL' else "x1.0"
             
-            self.logger.info(f"REAL BUY: {volume:.8f} BTC at ${price:,.2f}")
+            self.logger.info(f"REAL BUY: {volume:.8f} BTC at ${price:,.2f} | Regime: {ai_regime} (Shadow: {shadow_lev})")
             
             result = self.kraken.place_limit_order(
                 pair='XBTUSDT',
@@ -53,7 +54,8 @@ class RealTradingEngine(TradingEngine):
                     'type': 'buy',
                     'price': price,
                     'volume': volume,
-                    'order_id': result.get('order_id')
+                    'order_id': result.get('order_id'),
+                    'ai_regime': ai_regime  # Store for shadow margin
                 }
                 return True, f"Real buy executed: {volume:.8f} BTC at ${price:,.2f}"
             else:
@@ -63,10 +65,11 @@ class RealTradingEngine(TradingEngine):
             self.logger.error(f"Error in real buy: {e}")
             return False, f"Real buy error: {str(e)}"
     
-    def sell(self, price: float, btc_amount: float) -> Tuple[bool, str]:
+    def sell(self, price: float, btc_amount: float, ai_regime: Optional[str] = None) -> Tuple[bool, str]:
         """Execute real sell order on Kraken"""
         try:
-            self.logger.info(f"REAL SELL: {btc_amount:.8f} BTC at ${price:,.2f}")
+            shadow_lev = "x1.5" if ai_regime == 'BULL' else "x1.0"
+            self.logger.info(f"REAL SELL: {btc_amount:.8f} BTC at ${price:,.2f} | Regime: {ai_regime} (Shadow: {shadow_lev})")
             
             result = self.kraken.place_market_order(
                 pair='XBTUSDT',

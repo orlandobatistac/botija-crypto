@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 
 class PaperTradingEngine(TradingEngine):
     """Paper trading engine - simulates trades using database"""
-    
+
     def __init__(self):
         """Initialize paper trading engine"""
         self.logger = logger
         self._init_bot_status()
-    
+
     def _init_bot_status(self):
         """Initialize or get bot status from database"""
         from ...database import SessionLocal
         from ...models import BotStatus
-        
+
         db = SessionLocal()
         try:
             status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
@@ -44,23 +44,23 @@ class PaperTradingEngine(TradingEngine):
             db.rollback()
         finally:
             db.close()
-    
+
     def _get_status(self):
         """Get current bot status from database"""
         from ...database import SessionLocal
         from ...models import BotStatus
-        
+
         db = SessionLocal()
         try:
             return db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
         finally:
             db.close()
-    
+
     def _update_status(self, **kwargs):
         """Update bot status in database"""
         from ...database import SessionLocal
         from ...models import BotStatus
-        
+
         db = SessionLocal()
         try:
             status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
@@ -73,33 +73,59 @@ class PaperTradingEngine(TradingEngine):
             db.rollback()
         finally:
             db.close()
-    
-    def _save_trade(self, order_type: str, price: float, quantity: float, status_obj=None):
-        """Save trade to database"""
+
+    def _save_trade(self, order_type: str, price: float, quantity: float,
+                     status_obj=None, ai_regime: str = None, entry_price: float = None):
+        """Save trade to database with shadow margin tracking"""
         from ...database import SessionLocal
         from ...models import Trade
         import uuid
-        
+
         db = SessionLocal()
         try:
+            # Calculate shadow leverage (1.5x for BULL, 1.0x otherwise)
+            shadow_leverage = 1.5 if ai_regime == 'BULL' else 1.0
+
+            # Calculate profits for SELL orders
+            real_profit = None
+            shadow_profit = None
+
+            if order_type == "SELL" and entry_price:
+                # Real spot profit
+                real_profit = (price - entry_price) * quantity
+                # Shadow margin profit (simulating leverage)
+                shadow_profit = real_profit * shadow_leverage
+
             trade = Trade(
                 trade_id=f"PAPER-{uuid.uuid4().hex[:8]}",
                 order_type=order_type,
                 symbol="BTCUSD",
-                entry_price=price,
+                entry_price=price if order_type == "BUY" else entry_price,
+                exit_price=price if order_type == "SELL" else None,
                 quantity=quantity,
+                profit_loss=real_profit,
                 status="CLOSED" if order_type == "SELL" else "OPEN",
-                trading_mode="PAPER"
+                trading_mode="PAPER",
+                # Shadow Margin fields
+                ai_regime=ai_regime,
+                leverage_used=1.0,  # Always spot
+                shadow_leverage=shadow_leverage,
+                real_profit_usd=real_profit,
+                shadow_profit_usd=shadow_profit
             )
             db.add(trade)
             db.commit()
-            self.logger.info(f"Trade saved to DB: {order_type} {quantity:.8f} BTC at ${price:.2f}")
+
+            if order_type == "SELL" and shadow_profit:
+                self.logger.info(f"Trade saved: {order_type} | Real: ${real_profit:.2f} | Shadow (x{shadow_leverage}): ${shadow_profit:.2f}")
+            else:
+                self.logger.info(f"Trade saved: {order_type} {quantity:.8f} BTC at ${price:.2f} | Regime: {ai_regime}")
         except Exception as e:
             self.logger.error(f"Error saving trade: {e}")
             db.rollback()
         finally:
             db.close()
-    
+
     def load_balances(self) -> Dict[str, float]:
         """Load simulated balances from database"""
         status = self._get_status()
@@ -109,8 +135,8 @@ class PaperTradingEngine(TradingEngine):
                 'usd': status.usd_balance
             }
         return {'btc': 0.0, 'usd': 1000.0}
-    
-    def buy(self, price: float, usd_amount: float) -> Tuple[bool, str]:
+
+    def buy(self, price: float, usd_amount: float, ai_regime: str = None) -> Tuple[bool, str]:
         """Execute simulated buy order"""
         status = self._get_status()
         
@@ -134,26 +160,30 @@ class PaperTradingEngine(TradingEngine):
             trailing_stop_price=initial_stop
         )
         
-        # Save trade
-        self._save_trade("BUY", price, btc_quantity, status)
+        # Save trade with AI regime for shadow margin
+        self._save_trade("BUY", price, btc_quantity, status, ai_regime=ai_regime)
         
-        msg = f"📈 PAPER BUY: {btc_quantity:.8f} BTC at ${price:.2f} = ${usd_amount:.2f}"
+        shadow_lev = "x1.5" if ai_regime == 'BULL' else "x1.0"
+        msg = f"📈 PAPER BUY: {btc_quantity:.8f} BTC at ${price:.2f} | Regime: {ai_regime} ({shadow_lev})"
         self.logger.info(msg)
         return True, msg
     
-    def sell(self, price: float, btc_amount: float) -> Tuple[bool, str]:
-        """Execute simulated sell order"""
+    def sell(self, price: float, btc_amount: float, ai_regime: str = None) -> Tuple[bool, str]:
+        """Execute simulated sell order with shadow margin tracking"""
         status = self._get_status()
-        
+
         if not status:
             return False, "Bot status not found"
-        
+
         if status.btc_balance < btc_amount:
             return False, f"Insufficient BTC balance: {status.btc_balance:.8f}"
-        
+
+        # Get entry price for profit calculation
+        entry_price = status.last_buy_price
+
         # Calculate USD proceeds
         usd_proceeds = btc_amount * price
-        
+
         # Update balances
         self._update_status(
             usd_balance=status.usd_balance + usd_proceeds,
@@ -161,14 +191,22 @@ class PaperTradingEngine(TradingEngine):
             last_buy_price=None,
             trailing_stop_price=None
         )
+
+        # Save trade with shadow margin
+        self._save_trade("SELL", price, btc_amount, status, ai_regime=ai_regime, entry_price=entry_price)
+
+        # Calculate profits for logging
+        if entry_price:
+            real_profit = (price - entry_price) * btc_amount
+            shadow_lev = 1.5 if ai_regime == 'BULL' else 1.0
+            shadow_profit = real_profit * shadow_lev
+            msg = f"📉 PAPER SELL: ${usd_proceeds:.2f} | Real P/L: ${real_profit:.2f} | Shadow (x{shadow_lev}): ${shadow_profit:.2f}"
+        else:
+            msg = f"📉 PAPER SELL: {btc_amount:.8f} BTC at ${price:.2f} = ${usd_proceeds:.2f}"
         
-        # Save trade
-        self._save_trade("SELL", price, btc_amount, status)
-        
-        msg = f"📉 PAPER SELL: {btc_amount:.8f} BTC at ${price:.2f} = ${usd_proceeds:.2f}"
         self.logger.info(msg)
         return True, msg
-    
+
     def get_market_price(self) -> float:
         """Get current BTC price from Kraken"""
         try:
@@ -180,13 +218,13 @@ class PaperTradingEngine(TradingEngine):
                     return price
         except Exception as e:
             self.logger.error(f"Error fetching price: {e}")
-        
+
         return 0.0
-    
+
     def update_trailing_stop(self, price: float) -> Dict:
         """Update trailing stop simulation"""
         status = self._get_status()
-        
+
         if not status or status.btc_balance == 0:
             return {
                 'engine': 'paper',
@@ -195,20 +233,20 @@ class PaperTradingEngine(TradingEngine):
                 'btc_balance': 0.0,
                 'should_sell': False
             }
-        
+
         # Initialize trailing stop if needed
         current_stop = status.trailing_stop_price or (price * 0.99)
-        
+
         # Move stop up if price went higher
         new_stop = max(current_stop, price * 0.99)
-        
+
         if new_stop > current_stop:
             self._update_status(trailing_stop_price=new_stop)
             self.logger.info(f"📊 Trailing stop updated to ${new_stop:,.2f}")
-        
+
         # Check if should sell
         should_sell = price <= new_stop
-        
+
         return {
             'engine': 'paper',
             'current_price': price,
@@ -217,11 +255,11 @@ class PaperTradingEngine(TradingEngine):
             'should_sell': should_sell,
             'distance_to_stop': price - new_stop
         }
-    
+
     def get_open_position(self) -> Dict:
         """Get simulated open position"""
         status = self._get_status()
-        
+
         if status and status.btc_balance > 0:
             return {
                 'btc_balance': status.btc_balance,
@@ -230,7 +268,7 @@ class PaperTradingEngine(TradingEngine):
                 'mode': 'paper'
             }
         return {}
-    
+
     def close_position(self) -> bool:
         """Close simulated position"""
         try:
@@ -243,12 +281,12 @@ class PaperTradingEngine(TradingEngine):
         except Exception as e:
             self.logger.error(f"Error closing position: {e}")
             return False
-    
+
     def reset_wallet(self, initial_usd: float = 1000.0):
         """Reset wallet to initial state"""
         from ...database import SessionLocal
         from ...models import BotStatus
-        
+
         db = SessionLocal()
         try:
             status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
@@ -264,11 +302,11 @@ class PaperTradingEngine(TradingEngine):
             db.rollback()
         finally:
             db.close()
-    
+
     def get_wallet_summary(self) -> Dict:
         """Get complete wallet summary"""
         status = self._get_status()
-        
+
         if status:
             return {
                 'mode': 'paper',
@@ -277,7 +315,7 @@ class PaperTradingEngine(TradingEngine):
                 'last_buy_price': status.last_buy_price,
                 'trailing_stop': status.trailing_stop_price
             }
-        
+
         return {
             'mode': 'paper',
             'usd_balance': 0.0,
@@ -285,11 +323,11 @@ class PaperTradingEngine(TradingEngine):
             'last_buy_price': None,
             'trailing_stop': None
         }
-    
+
     def get_balance(self) -> Dict[str, float]:
         """Get current balances"""
         return self.load_balances()
-    
+
     def get_current_price(self) -> float:
         """Get current BTC price from Kraken public API"""
         return self.get_market_price()

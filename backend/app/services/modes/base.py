@@ -3,7 +3,7 @@ Base trading engine interface
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 class TradingEngine(ABC):
     """Abstract base class for trading engines (Real and Paper)"""
@@ -18,12 +18,13 @@ class TradingEngine(ABC):
         pass
     
     @abstractmethod
-    def buy(self, price: float, usd_amount: float) -> Tuple[bool, str]:
+    def buy(self, price: float, usd_amount: float, ai_regime: Optional[str] = None) -> Tuple[bool, str]:
         """Execute a buy operation
         
         Args:
             price: Current BTC price
             usd_amount: Amount in USD to spend
+            ai_regime: Current AI regime for shadow margin tracking
             
         Returns:
             (success: bool, message: str)
@@ -31,12 +32,13 @@ class TradingEngine(ABC):
         pass
     
     @abstractmethod
-    def sell(self, price: float, btc_amount: float) -> Tuple[bool, str]:
+    def sell(self, price: float, btc_amount: float, ai_regime: Optional[str] = None) -> Tuple[bool, str]:
         """Execute a sell operation
         
         Args:
             price: Current BTC price
             btc_amount: Amount of BTC to sell
+            ai_regime: AI regime at entry for shadow margin tracking
             
         Returns:
             (success: bool, message: str)

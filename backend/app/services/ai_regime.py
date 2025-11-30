@@ -82,37 +82,37 @@ Respond ONLY with this JSON format:
         try:
             from .kraken_client import KrakenClient
             import pandas as pd
-            
+
             # Use public API (no auth needed)
             client = KrakenClient(api_key="", api_secret="")
-            
+
             # Get OHLC data (daily candles, 720 = 720 days)
             ohlc = client.get_ohlc(interval=1440)  # Daily candles
             if not ohlc or len(ohlc) < 50:
                 logger.warning("Insufficient OHLC data for regime analysis")
                 return None
-            
+
             # Convert to DataFrame
             df = pd.DataFrame(ohlc, columns=['time', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
             df['close'] = df['close'].astype(float)
             df['volume'] = df['volume'].astype(float)
-            
+
             # Current price
             price = df['close'].iloc[-1]
-            
+
             # Price changes
             if len(df) >= 7:
                 price_7d = df['close'].iloc[-7]
                 change_7d = ((price - price_7d) / price_7d) * 100
             else:
                 change_7d = 0
-                
+
             if len(df) >= 30:
                 price_30d = df['close'].iloc[-30]
                 change_30d = ((price - price_30d) / price_30d) * 100
             else:
                 change_30d = 0
-            
+
             # Calculate RSI
             delta = df['close'].diff()
             gain = delta.where(delta > 0, 0).rolling(window=14).mean()
@@ -120,26 +120,26 @@ Respond ONLY with this JSON format:
             rs = gain / loss
             rsi = 100 - (100 / (1 + rs))
             current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50
-            
+
             # Calculate EMAs
             ema20 = df['close'].ewm(span=20).mean().iloc[-1]
             ema50 = df['close'].ewm(span=50).mean().iloc[-1]
             ema_signal = "BULLISH" if ema20 > ema50 else "BEARISH"
-            
+
             # Volatility (7-day)
             returns = df['close'].pct_change()
             volatility = returns.tail(7).std() * 100
-            
+
             # Volume ratio
             vol_ma20 = df['volume'].rolling(20).mean().iloc[-1]
             volume_ratio = df['volume'].iloc[-1] / vol_ma20 if vol_ma20 > 0 else 1.0
-            
+
             # 52-week high/low
             high_52w = df['close'].tail(252).max() if len(df) >= 252 else df['close'].max()
             low_52w = df['close'].tail(252).min() if len(df) >= 252 else df['close'].min()
             vs_52w_high = ((price - high_52w) / high_52w) * 100
             vs_52w_low = ((price - low_52w) / low_52w) * 100
-            
+
             return {
                 'price': price,
                 'change_7d': change_7d,
@@ -151,7 +151,7 @@ Respond ONLY with this JSON format:
                 'vs_52w_high': vs_52w_high,
                 'vs_52w_low': vs_52w_low
             }
-            
+
         except Exception as e:
             logger.error(f"Error fetching market data: {e}")
             return None

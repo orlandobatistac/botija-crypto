@@ -211,20 +211,25 @@ class TradingBot:
             current_price = analysis['current_price']
             trade_amount = analysis.get('trade_amount', self.trade_amount)
             quantity = trade_amount / current_price
+            
+            # Get AI regime for shadow margin tracking
+            stf = analysis.get('stf_signal', {})
+            ai_regime = stf.get('regime', 'LATERAL')
 
-            self.logger.info(f"Executing BUY: {quantity:.8f} BTC at ${current_price:,.2f}")
+            self.logger.info(f"Executing BUY: {quantity:.8f} BTC at ${current_price:,.2f} | Regime: {ai_regime}")
 
             # Use trading engine factory
             engine = get_trading_engine(self.kraken)
-            success, message = engine.buy(current_price, trade_amount)
+            success, message = engine.buy(current_price, trade_amount, ai_regime=ai_regime)
 
             if success:
                 self.active_trade = {
                     'entry_price': current_price,
                     'quantity': quantity,
-                    'order_id': message,  # Engine returns trade info in message
+                    'order_id': message,
                     'timestamp': datetime.now().isoformat(),
-                    'trailing_stop': TrailingStop(current_price, self.trailing_stop_pct)
+                    'trailing_stop': TrailingStop(current_price, self.trailing_stop_pct),
+                    'ai_regime': ai_regime  # Store for sell
                 }
 
                 # Send alert
@@ -259,12 +264,15 @@ class TradingBot:
             exit_price = analysis['current_price']
             entry_price = self.active_trade['entry_price']
             profit_loss = (exit_price - entry_price) * quantity
+            
+            # Get AI regime from when we entered the trade
+            ai_regime = self.active_trade.get('ai_regime', 'LATERAL')
 
-            self.logger.info(f"Executing SELL: {quantity:.8f} BTC at ${exit_price:,.2f}")
+            self.logger.info(f"Executing SELL: {quantity:.8f} BTC at ${exit_price:,.2f} | Regime: {ai_regime}")
 
             # Use trading engine factory
             engine = get_trading_engine(self.kraken)
-            success, message = engine.sell(exit_price, quantity)
+            success, message = engine.sell(exit_price, quantity, ai_regime=ai_regime)
 
             if success:
                 # Send alert
@@ -310,7 +318,12 @@ class TradingBot:
             'action': 'ERROR',
             'trade_id': None,
             'trading_mode': 'PAPER' if not self.kraken else 'REAL',
-            'error_message': None
+            'error_message': None,
+            # Shadow Margin tracking
+            'ai_regime': None,
+            'leverage_multiplier': 1.0,
+            'is_winter_mode': False,
+            'ema200': None
         }
 
         try:
@@ -348,6 +361,14 @@ class TradingBot:
                 cycle_data['ai_signal'] = ai_sig.get('signal', 'HOLD')
                 cycle_data['ai_confidence'] = ai_sig.get('confidence', 0)
                 cycle_data['ai_reason'] = ai_sig.get('reason', None)
+
+            # Smart Trend Follower data for Shadow Margin
+            stf = analysis.get('stf_signal', {})
+            if stf:
+                cycle_data['ai_regime'] = stf.get('regime')
+                cycle_data['leverage_multiplier'] = stf.get('leverage', 1.0)
+                cycle_data['is_winter_mode'] = stf.get('is_winter_mode', False)
+                cycle_data['ema200'] = stf.get('ema200')
 
             # Log market data
             logger.info(f"💰 Precio actual: ${analysis.get('current_price', 0):.2f}")
@@ -442,12 +463,17 @@ class TradingBot:
                 execution_time_ms=execution_time_ms,
                 trading_mode=cycle_data['trading_mode'],
                 trigger=trigger,
-                error_message=cycle_data['error_message']
+                error_message=cycle_data['error_message'],
+                # Shadow Margin tracking
+                ai_regime=cycle_data.get('ai_regime'),
+                leverage_multiplier=cycle_data.get('leverage_multiplier'),
+                is_winter_mode=cycle_data.get('is_winter_mode'),
+                ema200=cycle_data.get('ema200')
             )
             db.add(cycle)
             db.commit()
             db.close()
-            logger.info(f"💾 Ciclo guardado en DB ({execution_time_ms}ms, trigger={trigger})")
+            logger.info(f"💾 Ciclo guardado en DB ({execution_time_ms}ms, trigger={trigger}, regime={cycle_data.get('ai_regime')})")
         except Exception as e:
             logger.error(f"Error guardando ciclo en DB: {e}")
 

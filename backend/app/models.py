@@ -24,6 +24,13 @@ class Trade(Base):
     closed_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
 
+    # Shadow Margin tracking (audit leverage performance without real margin)
+    ai_regime = Column(String, nullable=True)  # BULL, BEAR, LATERAL, VOLATILE at entry
+    leverage_used = Column(Float, default=1.0)  # Actual leverage (always 1.0 for spot)
+    shadow_leverage = Column(Float, default=1.0)  # Simulated leverage (1.5 for BULL)
+    real_profit_usd = Column(Float, nullable=True)  # Actual spot profit
+    shadow_profit_usd = Column(Float, nullable=True)  # Simulated margin profit (x1.5 BULL)
+
 class BotStatus(Base):
     __tablename__ = "bot_status"
 
@@ -82,6 +89,12 @@ class TradingCycle(Base):
     ai_signal = Column(String)  # BUY, SELL, HOLD
     ai_confidence = Column(Float)
     ai_reason = Column(Text, nullable=True)
+
+    # AI Regime tracking (Smart Trend Follower)
+    ai_regime = Column(String, nullable=True)  # BULL, BEAR, LATERAL, VOLATILE
+    leverage_multiplier = Column(Float, nullable=True)  # 1.0 or 1.5
+    is_winter_mode = Column(Boolean, nullable=True)  # Price < EMA200
+    ema200 = Column(Float, nullable=True)  # For winter protocol
 
     # Action taken
     action = Column(String)  # BOUGHT, SOLD, HOLD, ERROR
