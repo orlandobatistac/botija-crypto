@@ -139,19 +139,19 @@ class PaperTradingEngine(TradingEngine):
     def buy(self, price: float, usd_amount: float, ai_regime: str = None) -> Tuple[bool, str]:
         """Execute simulated buy order"""
         status = self._get_status()
-        
+
         if not status:
             return False, "Bot status not found"
-        
+
         if status.usd_balance < usd_amount:
             return False, f"Insufficient USD balance: ${status.usd_balance:.2f}"
-        
+
         # Calculate BTC quantity
         btc_quantity = usd_amount / price
-        
+
         # Initialize trailing stop at 99% of entry price
         initial_stop = price * 0.99
-        
+
         # Update balances and set trailing stop
         self._update_status(
             usd_balance=status.usd_balance - usd_amount,
@@ -159,15 +159,15 @@ class PaperTradingEngine(TradingEngine):
             last_buy_price=price,
             trailing_stop_price=initial_stop
         )
-        
+
         # Save trade with AI regime for shadow margin
         self._save_trade("BUY", price, btc_quantity, status, ai_regime=ai_regime)
-        
+
         shadow_lev = "x1.5" if ai_regime == 'BULL' else "x1.0"
         msg = f"📈 PAPER BUY: {btc_quantity:.8f} BTC at ${price:.2f} | Regime: {ai_regime} ({shadow_lev})"
         self.logger.info(msg)
         return True, msg
-    
+
     def sell(self, price: float, btc_amount: float, ai_regime: str = None) -> Tuple[bool, str]:
         """Execute simulated sell order with shadow margin tracking"""
         status = self._get_status()
@@ -203,7 +203,7 @@ class PaperTradingEngine(TradingEngine):
             msg = f"📉 PAPER SELL: ${usd_proceeds:.2f} | Real P/L: ${real_profit:.2f} | Shadow (x{shadow_lev}): ${shadow_profit:.2f}"
         else:
             msg = f"📉 PAPER SELL: {btc_amount:.8f} BTC at ${price:.2f} = ${usd_proceeds:.2f}"
-        
+
         self.logger.info(msg)
         return True, msg
 

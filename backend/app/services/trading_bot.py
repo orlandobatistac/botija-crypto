@@ -211,7 +211,7 @@ class TradingBot:
             current_price = analysis['current_price']
             trade_amount = analysis.get('trade_amount', self.trade_amount)
             quantity = trade_amount / current_price
-            
+
             # Get AI regime for shadow margin tracking
             stf = analysis.get('stf_signal', {})
             ai_regime = stf.get('regime', 'LATERAL')
@@ -264,7 +264,7 @@ class TradingBot:
             exit_price = analysis['current_price']
             entry_price = self.active_trade['entry_price']
             profit_loss = (exit_price - entry_price) * quantity
-            
+
             # Get AI regime from when we entered the trade
             ai_regime = self.active_trade.get('ai_regime', 'LATERAL')
 

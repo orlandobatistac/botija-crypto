@@ -92,6 +92,11 @@ class TradingCycleBase(BaseModel):
     ai_confidence: float
     action: str
     trading_mode: str
+    # Smart Trend Follower fields
+    ai_regime: Optional[str] = None
+    leverage_multiplier: Optional[float] = None
+    is_winter_mode: Optional[bool] = None
+    ema200: Optional[float] = None
 
 class TradingCycleCreate(TradingCycleBase):
     ai_reason: Optional[str] = None

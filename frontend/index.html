@@ -117,75 +117,6 @@
         </div>
 
         <!-- Next Cycle & Manual Control -->
-        <!-- Risk Profile Control -->
-        <div class="bg-gradient-to-br from-amber-900/30 to-gray-900 rounded-xl border border-amber-700/50 p-6 mb-6 shadow-lg">
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
-                ⚙️ Risk Profile
-              </h3>
-              <p class="text-xs text-amber-300/70 mt-1">Bot aggressiveness control</p>
-            </div>
-
-            <!-- Profile Selector -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                @click="setRiskProfile('conservative')"
-                :class="riskProfile.profile === 'conservative' ? 'bg-green-600 ring-2 ring-green-400' : 'bg-gray-700 hover:bg-gray-600'"
-                class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
-              >
-                <span>🛡️ Conservative</span>
-                <span class="text-xs opacity-70">50% capital</span>
-              </button>
-              <button
-                @click="setRiskProfile('moderate')"
-                :class="riskProfile.profile === 'moderate' ? 'bg-yellow-600 ring-2 ring-yellow-400' : 'bg-gray-700 hover:bg-gray-600'"
-                class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
-              >
-                <span>⚖️ Moderate</span>
-                <span class="text-xs opacity-70">75% capital</span>
-              </button>
-              <button
-                @click="setRiskProfile('aggressive')"
-                :class="riskProfile.profile === 'aggressive' ? 'bg-red-600 ring-2 ring-red-400' : 'bg-gray-700 hover:bg-gray-600'"
-                class="px-4 py-2 rounded-lg font-semibold transition-all flex flex-col items-center"
-              >
-                <span>🔥 Aggressive</span>
-                <span class="text-xs opacity-70">100% capital</span>
-              </button>
-            </div>
-
-            <!-- Market Regime Badge -->
-            <div class="bg-gray-800/50 rounded-lg p-4 min-w-[150px]">
-              <div class="text-xs text-gray-400 mb-1">📊 Market Regime</div>
-              <div
-                class="text-xl font-bold capitalize"
-                :class="{
-                  'text-green-400': marketRegime === 'calm',
-                  'text-yellow-400': marketRegime === 'normal',
-                  'text-red-400': marketRegime === 'volatile'
-                }"
-                x-text="marketRegime === 'calm' ? '😌 Calm' : marketRegime === 'volatile' ? '🌊 Volatile' : '📈 Normal'"
-              ></div>
-              <div class="text-xs text-gray-500 mt-1">
-                Volatility: <span x-text="currentVolatility"></span>%
-              </div>
-            </div>
-
-            <!-- Projection Card -->
-            <div class="bg-gray-800/50 rounded-lg p-4 min-w-[200px]">
-              <div class="text-xs text-gray-400 mb-1">Monthly Projection</div>
-              <div class="text-2xl font-bold text-green-400">
-                <span x-text="riskProfile.projected_monthly_return_min || '3'"></span>% -
-                <span x-text="riskProfile.projected_monthly_return_max || '6'"></span>%
-              </div>
-              <div class="text-xs text-gray-500 mt-1">
-                Buy score: ≥<span x-text="adaptiveBuyThreshold"></span> |
-                Trade: <span x-text="riskProfile.trade_amount_percent || 75"></span>%
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           <!-- Next Cycle Countdown -->
@@ -299,12 +230,12 @@
                 <tr>
                   <th class="px-4 py-3 text-left">Time</th>
                   <th class="px-4 py-3 text-left">Price</th>
+                  <th class="px-4 py-3 text-left">Strategy</th>
                   <th class="px-4 py-3 text-left">Indicators</th>
                   <th class="px-4 py-3 text-left">AI Signal</th>
                   <th class="px-4 py-3 text-left">Action</th>
                   <th class="px-4 py-3 text-left">Balances</th>
                   <th class="px-4 py-3 text-left">Mode</th>
-                  <th class="px-4 py-3 text-right">Time (ms)</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
@@ -321,35 +252,54 @@
                     </td>
                     <td class="px-4 py-3">
                       <div class="text-xs space-y-1">
-                        <div class="flex items-center gap-2 mb-2">
-                          <span class="text-gray-500">Score:</span>
+                        <!-- AI Regime -->
+                        <div class="flex items-center gap-1">
                           <span
                             class="px-2 py-0.5 rounded text-xs font-bold"
                             :class="{
-                              'bg-green-600 text-white': cycle.tech_score >= 65,
-                              'bg-red-600 text-white': cycle.tech_score <= 35,
-                              'bg-gray-600 text-gray-200': cycle.tech_score > 35 && cycle.tech_score < 65
+                              'bg-green-600 text-white': cycle.ai_regime === 'BULL',
+                              'bg-red-600 text-white': cycle.ai_regime === 'BEAR',
+                              'bg-yellow-600 text-white': cycle.ai_regime === 'LATERAL',
+                              'bg-orange-600 text-white': cycle.ai_regime === 'VOLATILE',
+                              'bg-gray-600 text-gray-200': !cycle.ai_regime
                             }"
-                            x-text="cycle.tech_score ? cycle.tech_score + '/100' : 'N/A'"
+                            x-text="cycle.ai_regime ? (cycle.ai_regime === 'BULL' ? '🟢 BULL' : cycle.ai_regime === 'BEAR' ? '🔴 BEAR' : cycle.ai_regime === 'LATERAL' ? '🟡 LATERAL' : '🟠 VOLATILE') : 'N/A'"
                           ></span>
                         </div>
+                        <!-- Leverage -->
+                        <div>
+                          <span class="text-gray-500">Leverage:</span>
+                          <span 
+                            :class="cycle.leverage_multiplier > 1 ? 'text-purple-400 font-bold' : 'text-gray-400'"
+                            x-text="cycle.leverage_multiplier ? 'x' + cycle.leverage_multiplier : 'x1.0'"
+                          ></span>
+                        </div>
+                        <!-- Winter Mode -->
+                        <div>
+                          <span class="text-gray-500">Winter:</span>
+                          <span x-text="cycle.is_winter_mode ? '❄️ Active' : '☀️ Off'"></span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="text-xs space-y-1">
                         <div>
                           <span class="text-gray-500">EMA20:</span>
-                          <span x-text="formatNumber(cycle.ema20, 2)"></span>
+                          <span x-text="formatNumber(cycle.ema20, 0)"></span>
                         </div>
                         <div>
                           <span class="text-gray-500">EMA50:</span>
-                          <span x-text="formatNumber(cycle.ema50, 2)"></span>
+                          <span x-text="formatNumber(cycle.ema50, 0)"></span>
+                        </div>
+                        <div>
+                          <span class="text-gray-500">EMA200:</span>
+                          <span x-text="cycle.ema200 ? formatNumber(cycle.ema200, 0) : 'N/A'"></span>
                         </div>
                         <div>
                           <span class="text-gray-500">RSI:</span>
-                          <span x-text="formatNumber(cycle.rsi14, 2)"></span>
-                        </div>
-                        <div x-show="cycle.macd !== null">
-                          <span class="text-gray-500">MACD:</span>
-                          <span
-                            :class="cycle.macd > cycle.macd_signal ? 'text-green-400' : 'text-red-400'"
-                            x-text="formatNumber(cycle.macd, 2)"
+                          <span 
+                            :class="cycle.rsi14 > 70 ? 'text-red-400' : cycle.rsi14 < 30 ? 'text-green-400' : 'text-gray-300'"
+                            x-text="formatNumber(cycle.rsi14, 1)"
                           ></span>
                         </div>
                       </div>
