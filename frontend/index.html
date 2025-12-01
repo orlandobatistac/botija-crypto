@@ -714,13 +714,14 @@
             });
           },
 
-          // Compact date format MM/DD
+          // Compact date format MM/DD/YY
           toETDate(timestamp) {
             if (!timestamp) return "";
             return new Date(timestamp).toLocaleDateString("en-US", {
               timeZone: "America/New_York",
               month: "2-digit",
               day: "2-digit",
+              year: "2-digit",
             });
           },
 
