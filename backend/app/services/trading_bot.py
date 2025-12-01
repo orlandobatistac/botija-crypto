@@ -392,8 +392,11 @@ class TradingBot:
         openai_api_key: str = "",
         telegram_token: str = "",
         telegram_chat_id: str = "",
+        trade_amount: float = 100.0,  # Legacy param (ignored)
         trade_amount_percent: float = 75.0,
+        min_balance: float = 50.0,  # Legacy param (ignored)
         min_balance_percent: float = 20.0,
+        trailing_stop_pct: float = 0.0,  # Legacy param (ignored, we use EMA50)
         dry_run: bool = False
     ):
         """
@@ -405,8 +408,11 @@ class TradingBot:
             openai_api_key: OpenAI API key for regime detection
             telegram_token: Telegram bot token
             telegram_chat_id: Telegram chat ID for alerts
+            trade_amount: (Legacy) Fixed USD amount - ignored
             trade_amount_percent: % of capital per trade
+            min_balance: (Legacy) Fixed USD reserve - ignored
             min_balance_percent: % of capital to keep as reserve
+            trailing_stop_pct: (Legacy) Trailing stop % - ignored, uses EMA50
             dry_run: If True, simulate orders without execution
         """
         self.client = CCXTKrakenClient(kraken_api_key, kraken_secret)
