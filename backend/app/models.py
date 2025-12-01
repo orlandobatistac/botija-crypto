@@ -45,6 +45,7 @@ class BotStatus(Base):
     last_trade_id = Column(String, nullable=True)
     error_count = Column(Integer, default=0)
     last_error = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)  # Bot uptime tracking
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 class Signal(Base):

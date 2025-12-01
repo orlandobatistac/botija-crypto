@@ -22,6 +22,7 @@ class PaperTradingEngine(TradingEngine):
         """Initialize or get bot status from database"""
         from ...database import SessionLocal
         from ...models import BotStatus
+        from datetime import datetime, timezone
 
         db = SessionLocal()
         try:
@@ -34,11 +35,16 @@ class PaperTradingEngine(TradingEngine):
                     btc_balance=0.0,
                     usd_balance=1000.0,  # Start with $1000
                     last_buy_price=None,
-                    trailing_stop_price=None
+                    trailing_stop_price=None,
+                    started_at=datetime.now(timezone.utc)
                 )
                 db.add(status)
                 db.commit()
                 self.logger.info("Created new PAPER trading status with $1000 USD")
+            elif status.started_at is None:
+                # Set started_at if not set
+                status.started_at = datetime.now(timezone.utc)
+                db.commit()
         except Exception as e:
             self.logger.error(f"Error initializing bot status: {e}")
             db.rollback()

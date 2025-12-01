@@ -406,5 +406,46 @@ class TestUIDataValidation:
             assert isinstance(trade["quantity"], (int, float))
 
 
+class TestUptimeTracking:
+    """Test persistent uptime tracking feature"""
+
+    def test_scheduler_status_includes_uptime(self, api_client):
+        """Test GET /api/v1/bot/scheduler/status includes uptime fields"""
+        response = api_client.get(f"{BASE_URL}/api/v1/bot/scheduler/status")
+        assert response.status_code == 200
+
+        data = response.json()
+        # Verify uptime fields exist
+        assert "started_at" in data, "started_at field missing from scheduler status"
+        assert "uptime_seconds" in data, "uptime_seconds field missing from scheduler status"
+
+    def test_uptime_is_positive_when_running(self, api_client):
+        """Test that uptime_seconds is positive when bot is running"""
+        # Ensure bot is started
+        api_client.post(f"{BASE_URL}/api/v1/bot/start")
+
+        response = api_client.get(f"{BASE_URL}/api/v1/bot/scheduler/status")
+        assert response.status_code == 200
+
+        data = response.json()
+        # Uptime should be >= 0 (could be 0 if just started)
+        assert data["uptime_seconds"] >= 0, "uptime_seconds should be non-negative"
+        assert isinstance(data["uptime_seconds"], int), "uptime_seconds should be an integer"
+
+    def test_started_at_is_valid_timestamp(self, api_client):
+        """Test that started_at is a valid ISO timestamp"""
+        response = api_client.get(f"{BASE_URL}/api/v1/bot/scheduler/status")
+        assert response.status_code == 200
+
+        data = response.json()
+        if data["started_at"]:
+            # Should be a valid ISO format string
+            from datetime import datetime
+            try:
+                datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
+            except ValueError:
+                pytest.fail(f"started_at is not a valid ISO timestamp: {data['started_at']}")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

@@ -147,9 +147,31 @@ def shutdown_scheduler():
 
 def get_scheduler_status():
     """Retorna el estado actual del scheduler con countdown preciso"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     import pytz
     from .config import Config
+    from .database import SessionLocal
+    from .models import BotStatus
+
+    # Obtener started_at desde la DB
+    started_at = None
+    uptime_seconds = 0
+    try:
+        db = SessionLocal()
+        bot_status = db.query(BotStatus).first()
+        if bot_status and bot_status.started_at:
+            started_at = bot_status.started_at.isoformat()
+            now = datetime.now(timezone.utc)
+            if bot_status.started_at.tzinfo is None:
+                # Si no tiene timezone, asumir UTC
+                from datetime import timezone as tz
+                started_aware = bot_status.started_at.replace(tzinfo=tz.utc)
+            else:
+                started_aware = bot_status.started_at
+            uptime_seconds = int((now - started_aware).total_seconds())
+        db.close()
+    except Exception as e:
+        logger.error(f"Error getting started_at: {e}")
 
     status = {
         "running": scheduler.running,
@@ -157,6 +179,8 @@ def get_scheduler_status():
         "next_run_time": None,
         "seconds_until_next": 0,
         "trading_mode": Config.TRADING_MODE,
+        "started_at": started_at,
+        "uptime_seconds": uptime_seconds,
         "last_cycle": last_cycle_info["timestamp"],
         "last_cycle_result": {
             "status": last_cycle_info["status"],

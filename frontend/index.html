@@ -128,6 +128,10 @@
               <span :class="schedulerStatus.trading_mode === 'REAL' ? 'text-red-400' : 'text-gray-500'">mode</span>
               <span x-show="schedulerStatus.trading_mode === 'REAL'" class="text-red-400 ml-1">🔴</span>
             </div>
+            <div class="text-xs text-gray-500 mt-1" x-show="schedulerStatus.uptime_seconds > 0">
+              <i class="fa-solid fa-clock mr-1"></i>
+              <span x-text="formatUptime(schedulerStatus.uptime_seconds)"></span>
+            </div>
           </div>
 
           <!-- BTC Balance -->
@@ -623,6 +627,8 @@
             seconds_until_next: 0,
             next_run_time: null,
             last_cycle: null,
+            started_at: null,
+            uptime_seconds: 0,
             last_cycle_result: {
               status: "pending",
               error: null,
@@ -677,6 +683,17 @@
             if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
 
             return parts.join(" ");
+          },
+
+          formatUptime(seconds) {
+            if (!seconds || seconds <= 0) return "";
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+
+            if (days > 0) return `${days}d ${hours}h uptime`;
+            if (hours > 0) return `${hours}h ${mins}m uptime`;
+            return `${mins}m uptime`;
           },
 
           // Convert UTC timestamp to ET (New York timezone)
