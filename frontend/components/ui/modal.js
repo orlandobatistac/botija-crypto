@@ -1,5 +1,5 @@
 /**
- * Reusable Modal Component for Kraken AI Trading Bot
+ * Reusable Modal Component for Botija Crypto
  * Usage: x-data="modal({ title: 'My Modal', size: 'lg' })"
  */
 function modal(config = {}) {

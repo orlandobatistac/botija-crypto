@@ -1,5 +1,5 @@
 """
-Database models for Kraken AI Trading Bot
+Database models for Botija Crypto
 """
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text

@@ -1,9 +1,9 @@
 #!/bin/bash
-# Start development environment for Kraken AI Trading Bot
+# Start development environment for Botija Crypto
 
 set -e
 
-echo "🚀 Starting Kraken AI Trading Bot development environment..."
+echo "🚀 Starting Botija Crypto development environment..."
 
 # Check if virtual environment exists
 if [ ! -d "backend/venv" ]; then

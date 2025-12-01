@@ -1,5 +1,5 @@
 /**
- * API Utility functions for Kraken AI Trading Bot
+ * API Utility functions for Botija Crypto
  */
 class API {
     constructor(baseUrl = '/api') {

@@ -1,5 +1,5 @@
 {
-    "name": "Kraken AI Trading Bot DevContainer",
+    "name": "Botija Crypto DevContainer",
     "image": "mcr.microsoft.com/devcontainers/python:3.12",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {},
@@ -36,7 +36,7 @@
     ],
     "portsAttributes": {
         "8001": {
-            "label": "Kraken AI Trading Bot API",
+            "label": "Botija Crypto API",
             "onAutoForward": "notify"
         }
     }

@@ -1,5 +1,5 @@
 """
-Bot router for Kraken AI Trading Bot
+Bot router for Botija Crypto
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -29,10 +29,12 @@ def get_trading_bot() -> TradingBot:
     """Get or create trading bot instance"""
     global trading_bot
     if trading_bot is None:
-        # Check if we have real API keys - if not, use paper mode
-        kraken_key = os.getenv('KRAKEN_API_KEY', '')
-        kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '')
-        is_paper_mode = not (kraken_key and kraken_secret)
+        from ..config import Config
+
+        # Use centralized TRADING_MODE from config
+        is_paper_mode = Config.is_paper_mode()
+        kraken_key = os.getenv('KRAKEN_API_KEY', '') if not is_paper_mode else ''
+        kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '') if not is_paper_mode else ''
 
         trading_bot = TradingBot(
             kraken_api_key=kraken_key,
@@ -266,7 +268,7 @@ async def get_logs(
 async def download_logs():
     """Download complete log file"""
     # Check if running in production (systemd service)
-    service_name = "kraken-ai-trading-bot"
+    service_name = "botija-crypto"
 
     # Try to get logs from systemd journal (production)
     try:

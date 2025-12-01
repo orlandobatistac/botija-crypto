@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy script for Kraken AI Trading Bot to VPS
+# Deploy script for Botija Crypto to VPS
 
 set -e
 
@@ -10,7 +10,7 @@ fi
 
 VPS_HOST=$1
 VPS_USER=${VPS_USER:-root}
-VPS_PATH="/var/www/kraken-ai-trading-bot"
+VPS_PATH="/var/www/botija-crypto"
 
 echo "🚀 Deploying to $VPS_HOST..."
 
@@ -24,7 +24,7 @@ ssh -u $VPS_USER@$VPS_HOST "cd $VPS_PATH && \
     git pull origin main && \
     source /root/.venv_kraken/bin/activate && \
     pip install -r backend/requirements.txt && \
-    sudo systemctl restart kraken-ai-trading-bot.service && \
+    sudo systemctl restart botija-crypto.service && \
     sudo systemctl reload nginx && \
     echo '✅ Deployment successful'"
 

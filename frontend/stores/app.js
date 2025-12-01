@@ -1,5 +1,5 @@
 /**
- * Application Store for Kraken AI Trading Bot
+ * Application Store for Botija Crypto
  */
 document.addEventListener('alpine:init', () => {
     Alpine.store('app', {

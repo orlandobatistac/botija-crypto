@@ -1,5 +1,5 @@
 """
-Trade router for Kraken AI Trading Bot
+Trade router for Botija Crypto
 """
 
 from fastapi import APIRouter, Depends
@@ -14,17 +14,17 @@ router = APIRouter(
 
 @router.get("/", response_model=list[schemas.Trade])
 async def get_trades(
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     mode: str = None,  # Filter by PAPER or REAL
     db: Session = Depends(get_db)
 ):
     """Get all trades with pagination and optional mode filter"""
     query = db.query(models.Trade).order_by(models.Trade.created_at.desc())
-    
+
     if mode:
         query = query.filter(models.Trade.trading_mode == mode.upper())
-    
+
     trades = query.offset(skip).limit(limit).all()
     return trades
 

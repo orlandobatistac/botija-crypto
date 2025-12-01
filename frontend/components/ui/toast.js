@@ -1,5 +1,5 @@
 /**
- * Toast Notification Component for Kraken AI Trading Bot
+ * Toast Notification Component for Botija Crypto
  */
 function toast(message = '', type = 'info') {
     const container = document.getElementById('toast-container') || (() => {

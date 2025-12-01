@@ -1,5 +1,5 @@
 """
-Kraken AI Trading Bot - FastAPI Application
+Botija Crypto - FastAPI Application
 Generated from AI Agent Master Template
 """
 
@@ -30,15 +30,15 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)  # Create tables
     setup_log_handler()  # Setup in-memory log handler
     init_scheduler()
-    logger.info("🚀 Kraken AI Trading Bot iniciado")
+    logger.info("🚀 Botija Crypto iniciado")
     yield
     # Shutdown
     shutdown_scheduler()
-    logger.info("🛑 Kraken AI Trading Bot detenido")
+    logger.info("🛑 Botija Crypto detenido")
 
 # Create FastAPI app
 app = FastAPI(
-    title="Kraken AI Trading Bot",
+    title="Botija Crypto",
     description="Automated swing trading bot for Bitcoin using Kraken Spot API with AI validation",
     version="1.0.0",
     lifespan=lifespan
@@ -75,13 +75,13 @@ async def root():
     """Serve the frontend HTML"""
     from fastapi.responses import FileResponse
     import os
-    
+
     frontend_index = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-        "frontend", 
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "frontend",
         "index.html"
     )
-    
+
     if os.path.exists(frontend_index):
         return FileResponse(
             frontend_index,
@@ -92,11 +92,11 @@ async def root():
             }
         )
     else:
-        return {"message": "Kraken AI Trading Bot API is running", "frontend": "not found"}
+        return {"message": "Botija Crypto API is running", "frontend": "not found"}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "Kraken AI Trading Bot"}
+    return {"status": "healthy", "service": "Botija Crypto"}
 
 # API routes
 @app.get("/api/v1/status")
@@ -108,7 +108,7 @@ async def bot_status():
     """Get current bot trading status - legacy endpoint, use /api/v1/bot/status instead"""
     from app.database import SessionLocal
     from app.models import BotStatus
-    
+
     db = SessionLocal()
     try:
         status = db.query(BotStatus).order_by(BotStatus.id.desc()).first()

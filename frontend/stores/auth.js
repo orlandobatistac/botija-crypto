@@ -1,5 +1,5 @@
 /**
- * Authentication Store for Kraken AI Trading Bot
+ * Authentication Store for Botija Crypto
  */
 document.addEventListener('alpine:init', () => {
     Alpine.store('auth', {

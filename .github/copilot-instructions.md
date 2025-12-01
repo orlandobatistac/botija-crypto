@@ -1,7 +1,7 @@
-# GitHub Copilot Instructions - Kraken AI Trading Bot
+# GitHub Copilot Instructions - Botija Crypto
 
 ## Project Context
-- **Name**: Kraken AI Trading Bot
+- **Name**: Botija Crypto
 - **Technologies**: FastAPI + Alpine.js + TailwindCSS + Kraken API + OpenAI
 - **Architecture**: Trading Bot with Web Monitoring Dashboard
 - **Database**: SQLite (dev) / PostgreSQL (prod)

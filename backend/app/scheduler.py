@@ -28,12 +28,12 @@ last_cycle_info = {
 def init_scheduler():
     """Inicializa el scheduler con el bot de trading"""
     global trading_bot, last_cycle_info
-    
+
     try:
         # Load last cycle from database
         from .database import SessionLocal
         from .models import TradingCycle
-        
+
         db = SessionLocal()
         try:
             last_db_cycle = db.query(TradingCycle).order_by(TradingCycle.timestamp.desc()).first()
@@ -45,20 +45,23 @@ def init_scheduler():
                 logger.info(f"📊 Loaded last cycle from DB: {last_db_cycle.timestamp} - {last_db_cycle.action}")
         finally:
             db.close()
-        
+
         config = Config()
-        
+
         # Obtener credenciales y parámetros
         kraken_key = os.getenv('KRAKEN_API_KEY', '')
         kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '')
         openai_key = os.getenv('OPENAI_API_KEY', '')
         telegram_token = os.getenv('TELEGRAM_TOKEN', '')
         telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID', '')
-        
+
+        # Usar TRADING_MODE de config (centralizado)
+        is_paper_mode = config.is_paper_mode()
+
         # Inicializar bot con todos los parámetros
         trading_bot = TradingBot(
-            kraken_api_key=kraken_key,
-            kraken_secret=kraken_secret,
+            kraken_api_key=kraken_key if not is_paper_mode else '',
+            kraken_secret=kraken_secret if not is_paper_mode else '',
             openai_api_key=openai_key,
             telegram_token=telegram_token,
             telegram_chat_id=telegram_chat_id,
@@ -66,22 +69,23 @@ def init_scheduler():
             trade_amount_percent=config.TRADE_AMOUNT_PERCENT,
             min_balance=config.MIN_BALANCE_USD,
             min_balance_percent=config.MIN_BALANCE_PERCENT,
-            trailing_stop_pct=config.TRAILING_STOP_PERCENTAGE
+            trailing_stop_pct=config.TRAILING_STOP_PERCENTAGE,
+            dry_run=is_paper_mode
         )
-        
-        mode = "REAL TRADING" if (kraken_key and kraken_secret) else "PAPER TRADING"
+
+        mode = "PAPER TRADING" if is_paper_mode else "REAL TRADING"
         logger.info(f"✅ Bot inicializado en modo {mode}")
-        
+
         # Get interval in hours from config
         interval_hours = config.TRADING_INTERVAL_HOURS
-        
+
         # Build cron expression for every N hours on the hour
         # Examples:
         # 1 hour: */1 (every hour: 19:00, 20:00, 21:00...)
         # 2 hours: */2 (every 2 hours: 20:00, 22:00, 00:00...)
         # 4 hours: */4 (every 4 hours: 20:00, 00:00, 04:00...)
         # 24 hours: 0 (once per day at midnight: 00:00)
-        
+
         if interval_hours == 24:
             # Special case: once per day at midnight
             hour_expr = '0'
@@ -90,7 +94,7 @@ def init_scheduler():
             # Every N hours on the hour
             hour_expr = f'*/{interval_hours}'
             desc = f'every {interval_hours} hour(s) on the hour (ET)'
-        
+
         scheduler.add_job(
             run_trading_cycle,
             CronTrigger(minute=0, hour=hour_expr, timezone='America/New_York'),
@@ -98,10 +102,10 @@ def init_scheduler():
             name=f'Trading cycle - {desc}',
             replace_existing=True
         )
-        
+
         scheduler.start()
         logger.info(f"✅ Scheduler iniciado - Ciclo de trading {desc} (Charlotte, NC)")
-        
+
     except Exception as e:
         logger.warning(f"⚠️  Scheduler deshabilitado: {e}")
 
@@ -109,26 +113,26 @@ def init_scheduler():
 def run_trading_cycle():
     """Ejecuta un ciclo completo de trading"""
     global last_cycle_info
-    
+
     try:
         now = datetime.utcnow()
         logger.info(f"🔄 Iniciando ciclo de trading - {now.strftime('%Y-%m-%d %H:%M:%S')}")
-        
+
         # Update cycle start
         last_cycle_info["timestamp"] = now.strftime('%Y-%m-%dT%H:%M:%SZ')
         last_cycle_info["status"] = "running"
         last_cycle_info["error"] = None
         last_cycle_info["trigger"] = "scheduled"
-        
+
         # Ejecutar en loop asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(trading_bot.run_cycle())
-        
+
         # Update cycle success
         last_cycle_info["status"] = "success"
         logger.info(f"✅ Ciclo de trading completado - {datetime.now().strftime('%H:%M:%S')}")
-        
+
     except Exception as e:
         # Update cycle error
         last_cycle_info["status"] = "error"
@@ -145,12 +149,14 @@ def get_scheduler_status():
     """Retorna el estado actual del scheduler con countdown preciso"""
     from datetime import datetime
     import pytz
-    
+    from .config import Config
+
     status = {
         "running": scheduler.running,
         "jobs": len(scheduler.get_jobs()) if scheduler.running else 0,
         "next_run_time": None,
         "seconds_until_next": 0,
+        "trading_mode": Config.TRADING_MODE,
         "last_cycle": last_cycle_info["timestamp"],
         "last_cycle_result": {
             "status": last_cycle_info["status"],
@@ -158,39 +164,39 @@ def get_scheduler_status():
             "trigger": last_cycle_info["trigger"]
         }
     }
-    
+
     if not scheduler.running:
         return status
-    
+
     try:
         jobs = scheduler.get_jobs()
         if not jobs:
             return status
-        
+
         job = jobs[0]
         if not job.next_run_time:
             return status
-        
+
         next_run = job.next_run_time
-        
+
         # Obtener tiempo actual con timezone awareness
         if next_run.tzinfo:
             now = datetime.now(next_run.tzinfo)
         else:
             now = datetime.now()
-        
+
         # Calcular diferencia en segundos
         time_diff = next_run - now
         seconds = int(time_diff.total_seconds())
-        
+
         status["next_run_time"] = next_run.isoformat()
         status["seconds_until_next"] = max(0, seconds)
-        
+
         logger.debug(f"Scheduler status: next_run={next_run}, now={now}, seconds={seconds}")
-        
+
     except Exception as e:
         logger.error(f"Error calculating scheduler status: {e}")
         status["error"] = str(e)
-    
+
     return status
 

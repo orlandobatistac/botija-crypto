@@ -1,5 +1,5 @@
 /**
- * Navigation Bar Component for Kraken AI Trading Bot
+ * Navigation Bar Component for Botija Crypto
  */
 function navbar() {
     return {

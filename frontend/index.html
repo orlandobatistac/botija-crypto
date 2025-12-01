@@ -65,9 +65,13 @@
               class="text-3xl font-bold text-green-400 mb-1"
               x-text="botStatus.is_running ? 'ACTIVE' : 'INACTIVE'"
             ></div>
-            <div class="text-xs text-gray-500">
-              <span x-text="schedulerStatus.trading_mode || 'PAPER'"></span>
-              mode
+            <div class="text-xs">
+              <span
+                :class="schedulerStatus.trading_mode === 'REAL' ? 'text-red-400 font-semibold' : 'text-gray-500'"
+                x-text="schedulerStatus.trading_mode || 'PAPER'"
+              ></span>
+              <span :class="schedulerStatus.trading_mode === 'REAL' ? 'text-red-400' : 'text-gray-500'">mode</span>
+              <span x-show="schedulerStatus.trading_mode === 'REAL'" class="text-red-400 ml-1">🔴</span>
             </div>
           </div>
 
@@ -302,7 +306,7 @@
                     <td class="px-3 py-3">
                       <div class="flex flex-col gap-1">
                         <span
-                          class="px-2 py-1 rounded text-xs font-semibold bg-gray-700 text-gray-300 border border-gray-600"
+                          :class="cycle.trading_mode === 'REAL' ? 'px-2 py-1 rounded text-xs font-semibold bg-red-900/50 text-red-400 border border-red-700' : 'px-2 py-1 rounded text-xs font-semibold bg-gray-700 text-gray-300 border border-gray-600'"
                           x-text="cycle.trading_mode"
                         >
                         </span>
@@ -537,7 +541,7 @@
         <div
           class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500"
         >
-          Kraken AI Trading Bot v3.0.0 | Last update:
+          Botija Crypto v3.1.0 | Last update:
           <span x-text="toETTime(new Date().toISOString())"></span>
         </div>
       </footer>

@@ -582,6 +582,14 @@ class TradingBot:
             from ..database import SessionLocal
             from ..models import TradingCycle
 
+            # Build enhanced reason with AI regime reasoning
+            base_reason = cycle_data.get('reason', '')
+            regime_reasoning = cycle_data.get('regime_reasoning', '')
+            if regime_reasoning:
+                enhanced_reason = f"{base_reason} | AI: {regime_reasoning[:100]}"
+            else:
+                enhanced_reason = base_reason
+
             db = SessionLocal()
             cycle = TradingCycle(
                 btc_price=cycle_data.get('price', 0),
@@ -593,7 +601,7 @@ class TradingBot:
                 usd_balance=cycle_data.get('usd_balance', 0),
                 ai_signal=cycle_data.get('signal', 'HOLD'),
                 ai_confidence=cycle_data.get('confidence', 0),
-                ai_reason=cycle_data.get('reason', ''),
+                ai_reason=enhanced_reason,
                 ai_regime=cycle_data.get('regime', 'LATERAL'),
                 leverage_multiplier=cycle_data.get('shadow_leverage', 1.0),
                 is_winter_mode=cycle_data.get('is_winter_mode', False),

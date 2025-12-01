@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Kraken AI Trading Bot API
+Pydantic schemas for Botija Crypto API
 """
 
 from pydantic import BaseModel

@@ -1,5 +1,5 @@
 """
-Test suite for Kraken AI Trading Bot backend
+Test suite for Botija Crypto backend
 """
 
 import pytest

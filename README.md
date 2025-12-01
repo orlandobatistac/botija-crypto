@@ -1,4 +1,4 @@
-# Kraken AI Trading Bot v3.1 - Smart Trend Follower
+# Botija Crypto v3.1 - Smart Trend Follower
 
 ## 📌 Overview
 
