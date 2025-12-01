@@ -29,9 +29,14 @@ def get_trading_bot() -> TradingBot:
     """Get or create trading bot instance"""
     global trading_bot
     if trading_bot is None:
+        # Check if we have real API keys - if not, use paper mode
+        kraken_key = os.getenv('KRAKEN_API_KEY', '')
+        kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '')
+        is_paper_mode = not (kraken_key and kraken_secret)
+        
         trading_bot = TradingBot(
-            kraken_api_key=os.getenv('KRAKEN_API_KEY', ''),
-            kraken_secret=os.getenv('KRAKEN_SECRET_KEY', ''),
+            kraken_api_key=kraken_key,
+            kraken_secret=kraken_secret,
             openai_api_key=os.getenv('OPENAI_API_KEY', ''),
             telegram_token=os.getenv('TELEGRAM_TOKEN', ''),
             telegram_chat_id=os.getenv('TELEGRAM_CHAT_ID', ''),
@@ -39,7 +44,8 @@ def get_trading_bot() -> TradingBot:
             trade_amount_percent=float(os.getenv('TRADE_AMOUNT_PERCENT', 10)),
             min_balance=float(os.getenv('MIN_BALANCE_USD', 0)),
             min_balance_percent=float(os.getenv('MIN_BALANCE_PERCENT', 20)),
-            trailing_stop_pct=float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99))
+            trailing_stop_pct=float(os.getenv('TRAILING_STOP_PERCENTAGE', 0.99)),
+            dry_run=is_paper_mode
         )
     return trading_bot
 
