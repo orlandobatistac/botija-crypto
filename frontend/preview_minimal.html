@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview - Minimal Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100 p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-2xl font-bold mb-8 text-center text-gray-400">Preview: Diseño Minimalista</h1>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+
+            <!-- Bot Status -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-medium text-gray-400">Bot Status</div>
+                    <span class="inline-block w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                </div>
+                <div class="text-3xl font-bold text-emerald-400 mb-1">ACTIVE</div>
+                <div class="text-xs text-gray-500">PAPER mode</div>
+            </div>
+
+            <!-- BTC Balance -->
+            <div class="bg-amber-900/30 rounded-xl border border-amber-700/50 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-medium text-gray-400">BTC Balance</div>
+                    <span class="text-xl text-gray-500">₿</span>
+                </div>
+                <div class="text-2xl font-bold text-amber-400 mb-1">0.00000000</div>
+                <div class="text-xs text-gray-500">Bitcoin holdings</div>
+            </div>
+
+            <!-- USD Balance -->
+            <div class="bg-emerald-900/30 rounded-xl border border-emerald-700/50 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-medium text-gray-400">USD Balance</div>
+                    <span class="text-xl text-gray-500">$</span>
+                </div>
+                <div class="text-2xl font-bold text-emerald-400 mb-1">$1,000.00</div>
+                <div class="text-xs text-gray-500">Available to trade</div>
+            </div>
+
+            <!-- Total Value -->
+            <div class="bg-purple-900/30 rounded-xl border border-purple-700/50 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-medium text-gray-400">Total Value</div>
+                    <span class="text-xl text-gray-500">◆</span>
+                </div>
+                <div class="text-2xl font-bold text-purple-400 mb-1">$1,000.00</div>
+                <div class="text-xs text-gray-500">Portfolio value</div>
+            </div>
+        </div>
+
+        <!-- Trading Cycles -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-gray-500"></i> Trading Cycles
+                    </h2>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-gray-500 text-sm">Next cycle in</span>
+                        <span class="text-gray-300 text-base font-semibold">2h 56m 3s</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-600">
+                        <i class="fa-solid fa-play mr-2"></i>Run
+                    </button>
+                    <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-600">
+                        <i class="fa-solid fa-rotate mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <table class="w-full text-sm">
+                <thead class="bg-gray-700/50 border-b border-gray-600">
+                    <tr>
+                        <th class="text-left py-3 px-4 text-gray-400 font-medium">Time</th>
+                        <th class="text-left py-3 px-4 text-gray-400 font-medium">Price</th>
+                        <th class="text-left py-3 px-4 text-gray-400 font-medium">Strategy</th>
+                        <th class="text-left py-3 px-4 text-gray-400 font-medium">AI Signal</th>
+                        <th class="text-left py-3 px-4 text-gray-400 font-medium">Action</th>
+                        <th class="text-left py-3 px-4 text-gray-400 font-medium">Mode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-b border-gray-700/50">
+                        <td class="py-4 px-4 text-gray-300">11/30/2025<br><span class="text-xs text-gray-500">08:33 PM</span></td>
+                        <td class="py-4 px-4 text-gray-100 font-medium">$87,369.90</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-red-900/30 text-red-400 border border-red-800/50">BEAR</span>
+                            <div class="text-xs text-gray-500 mt-1">Leverage: x1</div>
+                            <div class="text-xs text-gray-500">Winter: Active</div>
+                        </td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">HOLD</span>
+                            <span class="text-xs text-gray-500 ml-2">85%</span>
+                            <div class="text-xs text-gray-500 mt-1">Winter Mode ON | Regime: BEAR</div>
+                        </td>
+                        <td class="py-4 px-4">
+                            <span class="px-3 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">HOLD</span>
+                        </td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-400">PAPER</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Badges Comparison -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8">
+            <h3 class="text-lg font-bold mb-4">Badges - Nuevo Diseño</h3>
+            <div class="flex flex-wrap gap-4">
+                <!-- Regimes -->
+                <div class="space-y-2">
+                    <div class="text-xs text-gray-500 mb-2">Regímenes:</div>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">BULL</span>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-red-900/30 text-red-400 border border-red-800/50">BEAR</span>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300 border border-gray-600">LATERAL</span>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-amber-900/30 text-amber-400 border border-amber-800/50">VOLATILE</span>
+                </div>
+
+                <!-- Actions -->
+                <div class="space-y-2 ml-8">
+                    <div class="text-xs text-gray-500 mb-2">Acciones:</div>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">BUY</span>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-red-900/30 text-red-400 border border-red-800/50">SELL</span>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">HOLD</span>
+                </div>
+
+                <!-- Mode -->
+                <div class="space-y-2 ml-8">
+                    <div class="text-xs text-gray-500 mb-2">Modo:</div>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-gray-700 text-gray-400">PAPER</span>
+                    <span class="px-3 py-1 rounded text-xs font-medium bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">REAL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Palette Reference -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <h3 class="text-lg font-bold mb-4">Paleta de Colores</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <div class="h-16 bg-emerald-500 rounded-lg mb-2"></div>
+                    <div class="text-xs text-gray-400">Emerald 500</div>
+                    <div class="text-xs text-gray-500">Positivo/Activo</div>
+                </div>
+                <div>
+                    <div class="h-16 bg-red-500 rounded-lg mb-2"></div>
+                    <div class="text-xs text-gray-400">Red 500</div>
+                    <div class="text-xs text-gray-500">Negativo/BEAR</div>
+                </div>
+                <div>
+                    <div class="h-16 bg-gray-700 rounded-lg mb-2"></div>
+                    <div class="text-xs text-gray-400">Gray 700</div>
+                    <div class="text-xs text-gray-500">Neutro/HOLD</div>
+                </div>
+                <div>
+                    <div class="h-16 bg-amber-500 rounded-lg mb-2"></div>
+                    <div class="text-xs text-gray-400">Amber 500</div>
+                    <div class="text-xs text-gray-500">Warning/VOLATILE</div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-center text-gray-500 text-sm mt-8">
+            Abre este archivo en tu navegador: frontend/preview_minimal.html
+        </p>
+    </div>
+</body>
+</html>

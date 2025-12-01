@@ -14,6 +14,7 @@
       defer
     ></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/static/css/components.css" />
   </head>
 
@@ -72,14 +73,14 @@
 
           <!-- BTC Balance -->
           <div
-            class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 shadow-lg"
+            class="bg-gradient-to-br from-amber-900/30 to-gray-900 rounded-xl border border-amber-700/50 p-6 shadow-lg"
           >
             <div class="flex items-center justify-between mb-3">
               <div class="text-sm font-medium text-gray-400">BTC Balance</div>
-              <span class="text-2xl">₿</span>
+              <span class="text-xl text-gray-500">₿</span>
             </div>
             <div
-              class="text-2xl font-bold text-orange-400 mb-1"
+              class="text-2xl font-bold text-amber-400 mb-1"
               x-text="formatBTC(botStatus.btc_balance)"
             ></div>
             <div class="text-xs text-gray-500">Bitcoin holdings</div>
@@ -87,14 +88,14 @@
 
           <!-- USD Balance -->
           <div
-            class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 shadow-lg"
+            class="bg-gradient-to-br from-emerald-900/30 to-gray-900 rounded-xl border border-emerald-700/50 p-6 shadow-lg"
           >
             <div class="flex items-center justify-between mb-3">
               <div class="text-sm font-medium text-gray-400">USD Balance</div>
-              <span class="text-2xl">💵</span>
+              <span class="text-xl text-gray-500">$</span>
             </div>
             <div
-              class="text-2xl font-bold text-blue-400 mb-1"
+              class="text-2xl font-bold text-emerald-400 mb-1"
               x-text="formatUSD(botStatus.usd_balance)"
             ></div>
             <div class="text-xs text-gray-500">Available to trade</div>
@@ -106,7 +107,7 @@
           >
             <div class="flex items-center justify-between mb-3">
               <div class="text-sm font-medium text-purple-300">Total Value</div>
-              <span class="text-2xl">💎</span>
+              <span class="text-xl text-gray-500">◆</span>
             </div>
             <div
               class="text-2xl font-bold text-purple-400 mb-1"
@@ -123,21 +124,21 @@
           <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
               <h2 class="text-xl font-bold flex items-center gap-2">
-                <span>📊</span> Trading Cycles
+                <i class="fa-solid fa-chart-line text-gray-500"></i> Trading Cycles
               </h2>
               <div class="flex items-center gap-1 mt-1">
                 <span class="text-gray-400 text-sm">Next cycle in</span>
-                <span class="text-pink-400 text-base font-bold" x-text="formatTime(schedulerStatus.seconds_until_next)"></span>
+                <span class="text-gray-300 text-base font-semibold" x-text="formatTime(schedulerStatus.seconds_until_next)"></span>
               </div>
             </div>
             <div class="flex items-center gap-4">
               <button
                 @click="runManualCycle()"
                 :disabled="manualCycleRunning"
-                :class="manualCycleRunning ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-900/30 hover:bg-purple-800/50 border border-purple-700/50'"
-                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 text-purple-300"
+                :class="manualCycleRunning ? 'bg-gray-600 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-600 border border-gray-600'"
+                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 text-gray-300"
               >
-                <span x-show="!manualCycleRunning">▶ Run</span>
+                <span x-show="!manualCycleRunning"><i class="fa-solid fa-play mr-1"></i>Run</span>
                 <span x-show="manualCycleRunning" class="flex items-center gap-1">
                   <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -148,9 +149,9 @@
               </button>
               <button
                 @click="fetchCycles()"
-                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-gray-600"
               >
-                🔄 Refresh
+                <i class="fa-solid fa-rotate mr-1"></i>Refresh
               </button>
             </div>
           </div>
