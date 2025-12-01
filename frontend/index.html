@@ -125,9 +125,9 @@
               <h2 class="text-xl font-bold flex items-center gap-2">
                 <span>📊</span> Trading Cycles
               </h2>
-              <div class="flex items-center gap-1 text-gray-400 text-xs mt-1">
-                <span></span>
-                <span x-text="'Next cycle in ' + formatTime(schedulerStatus.seconds_until_next)"></span>
+              <div class="flex items-center gap-1 mt-1">
+                <span class="text-gray-400 text-sm">Next cycle in</span>
+                <span class="text-pink-400 text-base font-bold" x-text="formatTime(schedulerStatus.seconds_until_next)"></span>
               </div>
             </div>
             <div class="flex items-center gap-4">
