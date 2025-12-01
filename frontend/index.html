@@ -9,7 +9,6 @@
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>⚡</text></svg>"
       type="image/svg+xml"
     />
-    <script src="/components/ui/how-it-works-modal.js"></script>
     <script
       src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
       defer
@@ -58,18 +57,17 @@
       <!-- How It Works Modal -->
       <template x-if="showHowItWorks">
         <div
-          x-data="howItWorksModal()"
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          @keydown.escape.window="$root.showHowItWorks = false"
+          @keydown.escape.window="showHowItWorks = false"
         >
-          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="$root.showHowItWorks = false"></div>
+          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showHowItWorks = false"></div>
           <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden" @click.stop>
             <!-- Header -->
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800/50">
               <h2 class="text-xl font-bold flex items-center gap-2">
                 <i class="fa-solid fa-circle-info text-blue-400"></i> How It Works
               </h2>
-              <button @click="$root.showHowItWorks = false" class="text-gray-400 hover:text-white transition-colors p-1">
+              <button @click="showHowItWorks = false" class="text-gray-400 hover:text-white transition-colors p-1">
                 <i class="fa-solid fa-xmark text-xl"></i>
               </button>
             </div>
@@ -77,8 +75,8 @@
             <div class="flex border-b border-gray-700 bg-gray-800/30 px-4">
               <template x-for="tab in ['strategy', 'ai', 'backtest', 'dashboard', 'tech']" :key="tab">
                 <button
-                  @click="$root.howItWorksTab = tab"
-                  :class="$root.howItWorksTab === tab ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-white'"
+                  @click="howItWorksTab = tab"
+                  :class="howItWorksTab === tab ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400 hover:text-white'"
                   class="px-4 py-3 text-sm font-medium transition-colors capitalize"
                 >
                   <i :class="{
@@ -93,7 +91,7 @@
               </template>
             </div>
             <!-- Content -->
-            <div class="p-6 overflow-y-auto max-h-[60vh] text-gray-300 space-y-4" x-html="getTabHTML($root.howItWorksTab)"></div>
+            <div class="p-6 overflow-y-auto max-h-[60vh] text-gray-300 space-y-4" x-html="getTabHTML(howItWorksTab)"></div>
             <!-- Footer -->
             <div class="px-6 py-4 border-t border-gray-700 bg-gray-800/30 text-center">
               <span class="text-xs text-gray-500">Botija Crypto v3.3.0 • Built with ⚡ by Orlando Batista</span>
@@ -603,11 +601,6 @@
       </footer>
     </div>
 
-    <script src="./stores/auth.js"></script>
-    <script src="./stores/app.js"></script>
-    <script src="./utils/api.js"></script>
-    <script src="./components/ui/toast.js"></script>
-
     <script>
       function app() {
         return {
@@ -641,6 +634,19 @@
           // How It Works Modal
           showHowItWorks: false,
           howItWorksTab: 'strategy',
+
+          // How It Works content
+          getTabHTML(tab) {
+            const tabs = {
+              strategy: `<h3 class="text-lg font-semibold text-white">What Does Botija Crypto Do?</h3><p><strong class="text-green-400">Botija Crypto</strong> is an automated trading bot that buys and sells Bitcoin (BTC) for US Dollars (USD) on the Kraken exchange.</p><h4 class="text-md font-semibold text-white mt-4">How It Works:</h4><ul class="list-disc list-inside space-y-2 ml-2"><li>Analyzes the market <strong>every 4 hours</strong> (6 times per day)</li><li>Uses technical indicators to detect trends and momentum</li><li>Buys when the market shows strength (uptrend confirmed)</li><li>Sells when momentum fades or risk increases</li></ul><h4 class="text-md font-semibold text-white mt-4">Key Concepts:</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2"><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-amber-400">EMA (20, 50, 200)</div><div class="text-sm text-gray-400">Moving averages that show trend direction. Price above EMAs = bullish, below = bearish.</div></div><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-purple-400">RSI (0-100)</div><div class="text-sm text-gray-400">Momentum indicator. Below 30 = oversold (buy opportunity), above 70 = overbought (sell signal).</div></div><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-blue-400">Winter Mode ❄️</div><div class="text-sm text-gray-400">Safety feature that blocks trades during risky market conditions (BEAR or LATERAL regimes).</div></div><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-green-400">Swing Trading</div><div class="text-sm text-gray-400">Holds positions for days or weeks, capturing medium-term price movements rather than quick trades.</div></div></div>`,
+              ai: `<h3 class="text-lg font-semibold text-white">The Brain Behind Decisions</h3><p>Every 4 hours, the bot sends market data to <strong class="text-blue-400">GPT-5.1</strong> (OpenAI's latest AI model) which analyzes:</p><ul class="list-disc list-inside space-y-1 ml-2"><li>Current price vs historical moving averages</li><li>Momentum strength and trend direction</li><li>Market volatility and risk levels</li><li>RSI for overbought/oversold conditions</li></ul><h4 class="text-md font-semibold text-white mt-4">Market Regimes:</h4><div class="space-y-2 mt-2"><div class="flex items-center gap-3 bg-emerald-900/20 rounded-lg p-3 border border-emerald-800/50"><span class="text-2xl">🟢</span><div><div class="font-semibold text-emerald-400">BULL</div><div class="text-sm text-gray-400">Uptrend detected → Trading is <strong>allowed</strong>. Bot may buy or hold.</div></div></div><div class="flex items-center gap-3 bg-red-900/20 rounded-lg p-3 border border-red-800/50"><span class="text-2xl">🔴</span><div><div class="font-semibold text-red-400">BEAR</div><div class="text-sm text-gray-400">Downtrend detected → Trading is <strong>blocked</strong>. Winter Mode protects capital.</div></div></div><div class="flex items-center gap-3 bg-yellow-900/20 rounded-lg p-3 border border-yellow-800/50"><span class="text-2xl">🟡</span><div><div class="font-semibold text-yellow-400">LATERAL</div><div class="text-sm text-gray-400">No clear trend → Trading is <strong>blocked</strong>. Waiting for direction.</div></div></div></div><div class="bg-gray-800 rounded-lg p-4 border border-gray-700 mt-4"><div class="text-sm text-gray-400"><i class="fa-solid fa-lightbulb text-yellow-400 mr-1"></i><strong>Why AI?</strong> Traditional bots use rigid rules. Our AI adapts to changing market conditions.</div></div>`,
+              backtest: `<h3 class="text-lg font-semibold text-white">Proof It Works</h3><p>We tested this strategy using <strong>real historical data</strong> to see how it would have performed.</p><h4 class="text-md font-semibold text-white mt-4">Results (January - November 2024):</h4><div class="overflow-x-auto mt-2"><table class="w-full text-sm"><thead class="bg-gray-800"><tr><th class="px-4 py-2 text-left text-gray-400">Metric</th><th class="px-4 py-2 text-left text-gray-400">Value</th><th class="px-4 py-2 text-left text-gray-400">What It Means</th></tr></thead><tbody class="divide-y divide-gray-700"><tr><td class="px-4 py-2 font-medium text-green-400">Total Return</td><td class="px-4 py-2 text-white">+48.7%</td><td class="px-4 py-2 text-gray-400">Bot gained 48.7% on initial investment</td></tr><tr><td class="px-4 py-2 font-medium text-amber-400">BTC Buy & Hold</td><td class="px-4 py-2 text-white">+47.2%</td><td class="px-4 py-2 text-gray-400">Just holding BTC would have gained 47.2%</td></tr><tr><td class="px-4 py-2 font-medium text-blue-400">Win Rate</td><td class="px-4 py-2 text-white">62%</td><td class="px-4 py-2 text-gray-400">62% of trades were profitable</td></tr><tr><td class="px-4 py-2 font-medium text-purple-400">Total Trades</td><td class="px-4 py-2 text-white">23</td><td class="px-4 py-2 text-gray-400">Made 23 buy/sell operations in 11 months</td></tr><tr><td class="px-4 py-2 font-medium text-red-400">Max Drawdown</td><td class="px-4 py-2 text-white">-12.3%</td><td class="px-4 py-2 text-gray-400">Largest temporary loss was 12.3%</td></tr></tbody></table></div><div class="bg-yellow-900/20 rounded-lg p-4 border border-yellow-800/50 mt-4"><div class="text-sm text-yellow-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i><strong>Disclaimer:</strong> Past performance does not guarantee future results.</div></div>`,
+              dashboard: `<h3 class="text-lg font-semibold text-white">Understanding Your Dashboard</h3><h4 class="text-md font-semibold text-white mt-4">Status Cards (Top Row)</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-3"><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-green-400">Bot Status</div><div class="text-sm text-gray-400">Shows ACTIVE (running) or INACTIVE. Also displays trading mode: PAPER (simulated) or REAL (live money).</div></div><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-amber-400">BTC Balance</div><div class="text-sm text-gray-400">Amount of Bitcoin you currently hold. Shows 0 when fully in USD.</div></div><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-emerald-400">USD Balance</div><div class="text-sm text-gray-400">Cash available to buy Bitcoin. This is your "dry powder".</div></div><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><div class="font-semibold text-purple-400">Total Value</div><div class="text-sm text-gray-400">Your complete portfolio value in USD (BTC value + USD balance).</div></div></div><h4 class="text-md font-semibold text-white mt-4">Controls</h4><div class="bg-gray-800 rounded-lg p-3 border border-gray-700"><ul class="text-sm space-y-1"><li><span class="text-blue-400 font-medium">Run:</span> Manually trigger a trading cycle</li><li><span class="text-blue-400 font-medium">Refresh:</span> Update the table with latest data</li><li><span class="text-blue-400 font-medium">Next cycle in:</span> Countdown to next analysis</li></ul></div>`,
+              tech: `<h3 class="text-lg font-semibold text-white">Technology Stack</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4"><div class="bg-gray-800 rounded-lg p-4 border border-gray-700"><div class="flex items-center gap-2 mb-2"><i class="fa-brands fa-python text-yellow-400 text-xl"></i><span class="font-semibold text-white">Backend</span></div><ul class="text-sm text-gray-400 space-y-1"><li>• FastAPI (Python) - REST API</li><li>• SQLAlchemy + SQLite - Database</li><li>• APScheduler - 4h automation</li></ul></div><div class="bg-gray-800 rounded-lg p-4 border border-gray-700"><div class="flex items-center gap-2 mb-2"><i class="fa-brands fa-js text-yellow-300 text-xl"></i><span class="font-semibold text-white">Frontend</span></div><ul class="text-sm text-gray-400 space-y-1"><li>• Alpine.js - Reactive UI</li><li>• TailwindCSS - Styling</li><li>• Font Awesome - Icons</li></ul></div><div class="bg-gray-800 rounded-lg p-4 border border-gray-700"><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-coins text-blue-400 text-xl"></i><span class="font-semibold text-white">Trading</span></div><ul class="text-sm text-gray-400 space-y-1"><li>• Kraken Exchange + CCXT</li><li>• TA (indicators) + Pandas</li></ul></div><div class="bg-gray-800 rounded-lg p-4 border border-gray-700"><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-brain text-purple-400 text-xl"></i><span class="font-semibold text-white">AI & Hosting</span></div><ul class="text-sm text-gray-400 space-y-1"><li>• OpenAI GPT-5.1</li><li>• Ubuntu VPS + Nginx + SSL</li></ul></div></div>`
+            };
+            return tabs[tab] || '';
+          },
+
           riskProfile: {
             profile: 'moderate',
             buy_score_threshold: 65,

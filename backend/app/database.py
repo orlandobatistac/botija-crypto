@@ -6,8 +6,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from pathlib import Path
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./botija-crypto.db")
+# Get absolute path to database (relative to this file's directory, which is backend/app)
+_DEFAULT_DB_PATH = Path(__file__).parent.parent / "botija-crypto.db"
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{_DEFAULT_DB_PATH}")
 
 engine = create_engine(
     DATABASE_URL,
