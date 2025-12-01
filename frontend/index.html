@@ -121,14 +121,16 @@
           class="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6 shadow-lg"
         >
           <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
-            <h2 class="text-xl font-bold flex items-center gap-2">
-              <span>📊</span> Trading Cycles
-            </h2>
-            <div class="flex items-center gap-4">
-              <div class="flex items-center gap-2 text-blue-400">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <span>📊</span> Trading Cycles
+              </h2>
+              <div class="flex items-center gap-1 text-gray-400 text-xs mt-1">
                 <span>⏰</span>
-                <span class="font-bold" x-text="'Next: ' + formatTime(schedulerStatus.seconds_until_next)"></span>
+                <span x-text="'Next cycle in ' + formatTime(schedulerStatus.seconds_until_next)"></span>
               </div>
+            </div>
+            <div class="flex items-center gap-4">
               <button
                 @click="runManualCycle()"
                 :disabled="manualCycleRunning"
@@ -146,9 +148,9 @@
               </button>
               <button
                 @click="fetchCycles()"
-                class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm transition-colors"
+                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
               >
-                🔄
+                🔄 Refresh
               </button>
             </div>
           </div>
