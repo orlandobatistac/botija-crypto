@@ -184,7 +184,7 @@ Respond ONLY with this JSON format:
             logger.info(f"Calling OpenAI for regime analysis (BTC=${market_data['price']:,.0f}, RSI={market_data['rsi']:.0f})")
 
             response = client.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-5.1",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 response_format={"type": "json_object"}

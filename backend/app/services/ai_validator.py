@@ -93,7 +93,7 @@ REASON: [Explicación técnica breve]
 """
 
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5.1",
                 messages=[
                     {"role": "system", "content": "Eres un trader profesional de Bitcoin. Analizas indicadores técnicos y generas señales precisas. Responde solo en el formato solicitado."},
                     {"role": "user", "content": prompt}

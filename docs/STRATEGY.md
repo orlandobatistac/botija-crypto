@@ -58,7 +58,7 @@ if price < exit_threshold:
 
 ### 3. AI Regime Detection
 
-OpenAI GPT-4 classifies market conditions:
+OpenAI GPT-5.1 classifies market conditions:
 
 | Regime | Description | Entry | Shadow Leverage |
 |--------|-------------|-------|-----------------|
