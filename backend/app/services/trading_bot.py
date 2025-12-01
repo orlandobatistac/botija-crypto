@@ -436,6 +436,71 @@ class TradingBot:
             except Exception as e:
                 self.logger.warning(f"Telegram init failed: {e}")
 
+        # Initialize paper wallet if dry_run
+        if self.dry_run:
+            self._init_paper_wallet()
+
+    def _init_paper_wallet(self):
+        """Initialize paper wallet in database if not exists"""
+        try:
+            from ..database import SessionLocal
+            from ..models import BotStatus
+            db = SessionLocal()
+            status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
+            if not status:
+                status = BotStatus(
+                    is_running=True,
+                    trading_mode="PAPER",
+                    btc_balance=0.0,
+                    usd_balance=1000.0,
+                    last_buy_price=None,
+                    trailing_stop_price=None
+                )
+                db.add(status)
+                db.commit()
+                self.logger.info("Created PAPER wallet with $1000 USD")
+            db.close()
+        except Exception as e:
+            self.logger.warning(f"Paper wallet init failed: {e}")
+
+    def _get_paper_balance(self) -> Dict[str, float]:
+        """Get balance from paper wallet in database"""
+        try:
+            from ..database import SessionLocal
+            from ..models import BotStatus
+            db = SessionLocal()
+            status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
+            db.close()
+            if status:
+                return {'btc': status.btc_balance or 0, 'usd': status.usd_balance or 0}
+            return {'btc': 0, 'usd': 1000}
+        except Exception as e:
+            self.logger.warning(f"Paper balance fetch failed: {e}")
+            return {'btc': 0, 'usd': 1000}
+
+    def _update_paper_balance(self, btc: float = None, usd: float = None):
+        """Update paper wallet balance in database"""
+        try:
+            from ..database import SessionLocal
+            from ..models import BotStatus
+            db = SessionLocal()
+            status = db.query(BotStatus).filter(BotStatus.trading_mode == "PAPER").first()
+            if status:
+                if btc is not None:
+                    status.btc_balance = btc
+                if usd is not None:
+                    status.usd_balance = usd
+                db.commit()
+            db.close()
+        except Exception as e:
+            self.logger.warning(f"Paper balance update failed: {e}")
+
+    def _get_balance(self) -> Dict[str, float]:
+        """Get balance - paper wallet if dry_run, else real Kraken"""
+        if self.dry_run:
+            return self._get_paper_balance()
+        return self.client.get_balance()
+
     def _get_ai_regime(self) -> Dict:
         """Get current AI regime from database or service"""
         try:
@@ -452,7 +517,7 @@ class TradingBot:
     def _has_position(self) -> bool:
         """Check if we have an open BTC position"""
         try:
-            balance = self.client.get_balance()
+            balance = self._get_balance()
             btc_balance = balance.get('btc', 0)
             return btc_balance > 0.0001  # More than dust
         except Exception:
@@ -581,7 +646,7 @@ class TradingBot:
             )
 
             # Get balances
-            balance = self.client.get_balance()
+            balance = self._get_balance()
 
             # Add balance and regime info to signal
             signal.update({
@@ -637,6 +702,11 @@ class TradingBot:
             if self.dry_run:
                 order_id = f"DRY_RUN_{datetime.now().timestamp()}"
                 success = True
+                # Update paper wallet
+                new_usd = usd_balance - trade_amount_usd
+                new_btc = self._get_balance().get('btc', 0) + btc_quantity
+                self._update_paper_balance(btc=new_btc, usd=new_usd)
+                self.logger.info(f"📝 Paper wallet updated: ${new_usd:.2f} USD, {new_btc:.6f} BTC")
             else:
                 result = self.client.create_market_order("BTC/USD", "buy", btc_quantity)
                 success = result.get('success', False)
@@ -682,7 +752,7 @@ class TradingBot:
         try:
             if not self.active_position:
                 # Check actual balance
-                balance = self.client.get_balance()
+                balance = self._get_balance()
                 btc_balance = balance.get('btc', 0)
                 if btc_balance <= 0.0001:
                     self.logger.warning("No position to sell")
@@ -709,6 +779,11 @@ class TradingBot:
             if self.dry_run:
                 order_id = f"DRY_RUN_{datetime.now().timestamp()}"
                 success = True
+                # Update paper wallet
+                sell_value = quantity * current_price
+                new_usd = self._get_balance().get('usd', 0) + sell_value
+                self._update_paper_balance(btc=0, usd=new_usd)
+                self.logger.info(f"📝 Paper wallet updated: ${new_usd:.2f} USD, 0 BTC")
             else:
                 result = self.client.create_market_order("BTC/USD", "sell", quantity)
                 success = result.get('success', False)
