@@ -1,15 +1,23 @@
-# Kraken AI Trading Bot v3.0 - Smart Trend Follower
+# Kraken AI Trading Bot v3.1 - Smart Trend Follower
 
 ## 📌 Overview
 
-Automated **BTC swing trading bot** using **Kraken Spot API** with the **Smart Trend Follower (STF)** strategy. Achieved **+2990% return** in backtesting (2018-2025).
+Automated **BTC swing trading bot** using **CCXT + Kraken Spot API** with the **Smart Trend Follower (STF)** strategy.
+
+**Backtest Results (2018-2025):**
+- **SPOT (x1.0):** +1652% return
+- **Shadow Margin (x1.5 BULL):** +2054% return
+- **vs Buy & Hold:** +601%
+
+**Robustness Tests:** 3/4 passed (EMA50 exit logic is robust even with random regimes)
 
 **Core Features:**
-- **EMA-based entries/exits** (EMA20+1.5% entry, EMA50-1.5% exit)
-- **AI Regime Detection** (BULL/BEAR/LATERAL/VOLATILE)
-- **Dynamic Leverage** (x1.5 in BULL, x1.0 spot otherwise)
+- **CCXT Library** for Kraken API (portable to other exchanges)
+- **EMA-based entries/exits** (regime-specific thresholds)
+- **AI Regime Detection** (BULL/BEAR/LATERAL/VOLATILE via OpenAI)
+- **Shadow Margin Tracking** (x1.5 audit in BULL, spot execution)
 - **Winter Protocol** (protective filter when price < EMA200)
-- **Shadow Margin Tracking** (audit leverage without real margin)
+- **Paper Trading Mode** ($1000 USD simulated wallet)
 - **Telegram Alerts** for all trading events
 
 ## 🚀 Quick Start
@@ -26,45 +34,47 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 
 ## 🧠 Smart Trend Follower Strategy
 
-### Entry Conditions
-- Price crosses **above EMA20 + 1.5%**
-- AI Regime is favorable (BULL preferred)
-- Winter Protocol check passes (if price < EMA200, requires RSI > 65)
+### Entry Conditions (Regime-Specific)
+| Regime | Entry Threshold | Notes |
+|--------|-----------------|-------|
+| BULL 🟢 | Price > EMA20 + 1.5% | Aggressive entry |
+| VOLATILE 🟠 | Price > EMA20 + 1.5% | Same as BULL |
+| LATERAL 🟡 | Price > EMA50 + 1.5% | Conservative entry |
+| BEAR 🔴 | **BLOCKED** | No entries allowed |
 
 ### Exit Conditions
-- Price crosses **below EMA50 - 1.5%**
-- Or trailing stop triggered
+- Price < **EMA50 - 1.5%** (standard exit)
+- **BULL exception:** Only exit if price < EMA50 - 3% (catastrophic drop)
 
-### Dynamic Leverage
-| AI Regime | Leverage | Mode |
-|-----------|----------|------|
-| BULL 🟢 | x1.5 | Margin (shadow) |
-| BEAR 🔴 | x1.0 | Spot |
-| LATERAL 🟡 | x1.0 | Spot |
-| VOLATILE 🟠 | x1.0 | Spot |
+### Shadow Margin (Audit Only)
+| AI Regime | Shadow Leverage | Execution |
+|-----------|-----------------|-----------|
+| BULL 🟢 | x1.5 (tracked) | Spot |
+| Others | x1.0 | Spot |
+
+*Real trading is ALWAYS spot. Shadow margin tracks hypothetical leveraged returns.*
 
 ### Winter Protocol ❄️
 When `Price < EMA200`:
-- Extra caution mode activated
-- Only enters if RSI > 65 (strong momentum)
-- Protects against bear market entries
+- **BEAR/LATERAL/VOLATILE:** Entries blocked
+- **BULL only:** Allowed if RSI > 65
 
 ## 📊 Technical Indicators
 
 | Indicator | Usage |
 |-----------|-------|
-| EMA20 | Entry trigger (price > EMA20+1.5%) |
-| EMA50 | Exit trigger (price < EMA50-1.5%) |
+| EMA20 | Entry trigger (BULL/VOLATILE) |
+| EMA50 | Entry (LATERAL) + Exit trigger |
 | EMA200 | Winter Protocol filter |
-| RSI14 | Momentum confirmation |
+| RSI14 | Winter momentum confirmation |
 
 ## 🤖 AI Regime Detection
 
-OpenAI analyzes real-time market data to classify:
-- **BULL**: Strong uptrend, use leverage
-- **BEAR**: Downtrend, stay in spot
-- **LATERAL**: Sideways, stay in spot
-- **VOLATILE**: High volatility, stay in spot
+OpenAI GPT-4 analyzes real-time market data:
+- **BULL**: Strong uptrend → Shadow leverage x1.5
+- **BEAR**: Downtrend → No entries
+- **LATERAL**: Sideways → Conservative EMA50 entry
+- **VOLATILE**: High volatility → EMA20 entry, spot only
 
 ## 📁 Project Structure
 
@@ -77,27 +87,103 @@ botija-crypto/
 │   │   ├── models.py            # DB models
 │   │   ├── routers/             # API endpoints
 │   │   └── services/
-│   │       ├── trading_bot.py   # Main bot logic
-│   │       ├── smart_trend_follower.py  # STF strategy
-│   │       ├── ai_regime.py     # AI regime detection
-│   │       ├── kraken_client.py # Kraken API
-│   │       ├── technical_indicators.py
-│   │       ├── trailing_stop.py
-│   │       ├── telegram_alerts.py
+│   │       ├── trading_bot.py   # Core bot (CCXT + Strategy)
+│   │       ├── ai_regime.py     # OpenAI regime detection
+│   │       ├── kraken_client.py # Legacy Kraken client
 │   │       └── modes/
-│   │           ├── paper.py     # Paper trading
-│   │           └── real.py      # Real trading
-│   └── tests/
+│   │           ├── paper.py     # Paper trading engine
+│   │           └── real.py      # Real trading engine
+│   ├── tests/
+│   │   └── test_strategy_logic.py  # 22 strategy tests
+│   └── data/                    # SQLite databases
 ├── frontend/
-│   ├── index.html               # Dashboard
-│   └── stores/                  # Alpine.js state
-├── scripts/                     # Deploy & migrations
-└── docs/                        # Documentation
+│   └── index.html               # Alpine.js dashboard
+├── scripts/
+│   ├── run_ai_backtest.py       # Backtest validation
+│   └── test_overfitting.py      # Robustness tests
+└── docs/
+    └── STRATEGY.md              # Strategy documentation
 ```
 
 ## ⚙️ Configuration
 
 ### Environment Variables
+```env
+# Kraken API (leave empty for PAPER mode)
+KRAKEN_API_KEY=
+KRAKEN_SECRET_KEY=
+
+# OpenAI
+OPENAI_API_KEY=
+
+# Telegram Alerts
+TELEGRAM_TOKEN=
+TELEGRAM_CHAT_ID=
+
+# Trading
+TRADING_INTERVAL_HOURS=4     # Cycle frequency
+TRADE_AMOUNT_PERCENT=75      # % of balance per trade
+```
+
+## 📈 Dashboard Features
+
+- **Bot Status**: Active/Inactive, PAPER/REAL mode
+- **Paper Wallet**: $1000 USD starting balance
+- **Balances**: BTC and USD (real or paper)
+- **Next Cycle Countdown**: Real-time from scheduler
+- **Trading Cycles History**: With STF strategy data
+  - AI Regime (BULL/BEAR/LATERAL/VOLATILE)
+  - Shadow Leverage (x1.5/x1.0)
+  - Winter Mode status
+  - EMAs and RSI values
+
+## 🔧 Tech Stack
+
+- **Backend**: FastAPI, SQLAlchemy, APScheduler, CCXT
+- **Frontend**: Alpine.js, TailwindCSS
+- **Trading**: CCXT (Kraken), pandas, numpy
+- **AI**: OpenAI GPT-4
+- **Alerts**: python-telegram-bot
+- **Database**: SQLite
+- **Deploy**: VPS + Nginx + systemd + GitHub Actions
+
+## 🛡️ Safety Features
+
+- **No real leverage** (shadow tracking only)
+- **Spot trading only** on Kraken
+- **Paper trading mode** with $1000 simulated wallet
+- **Winter Protocol** bear market filter
+- **BEAR regime blocks** all entries
+- **EMA50 exit** proven robust in Monte Carlo tests
+
+## 📅 Trading Schedule
+
+Cycles run every 4 hours at: **0:00, 4:00, 8:00, 12:00, 16:00, 20:00 ET**
+
+## 🧪 Validation Tests
+
+```bash
+# Run strategy tests (22 tests)
+cd backend && python -m pytest tests/test_strategy_logic.py -v
+
+# Run backtest
+python scripts/run_ai_backtest.py
+
+# Run overfitting tests
+python scripts/test_overfitting.py
+```
+
+## 🚀 Deployment
+
+Automated via GitHub Actions on push to `main`:
+1. SSH to VPS
+2. Git pull
+3. Install dependencies
+4. Restart systemd service
+
+---
+
+**v3.1.0** - Smart Trend Follower + CCXT | Built with ❤️ for BTC swing trading
 ```env
 # Kraken API
 KRAKEN_API_KEY=
