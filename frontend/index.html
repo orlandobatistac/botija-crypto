@@ -748,19 +748,6 @@
             });
           },
 
-          // Calculate seconds until next 4-hour mark (1, 5, 9, 13, 17, 21 ET)
-          calcCountdown() {
-            const now = new Date();
-            const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-            const h = et.getHours();
-            const m = et.getMinutes();
-            const s = et.getSeconds();
-            
-            // Next schedule hour: 1, 5, 9, 13, 17, 21 (every 4h starting at 1)
-            const next = h < 1 ? 1 : h < 5 ? 5 : h < 9 ? 9 : h < 13 ? 13 : h < 17 ? 17 : h < 21 ? 21 : 25;
-            return (next - h) * 3600 - m * 60 - s;
-          },
-
           // Format USD currency with $ and commas
           formatUSD(amount) {
             if (amount == null || isNaN(amount)) return "$0.00";
@@ -802,40 +789,34 @@
           },
 
           async init() {
-            // Calculate initial countdown
-            this.schedulerCountdown = this.calcCountdown();
-
-            // Wait for initial status to load
+            // Load initial data
             await this.refreshStatus();
             await this.fetchLogs();
             await this.fetchCycles();
 
-            // Refresh status every 30 seconds
+            // Refresh from backend every 30 seconds
             setInterval(() => this.refreshStatus(), 30000);
-
-            // Refresh cycles every 30 seconds
             setInterval(() => this.fetchCycles(), 30000);
 
-            // Simple countdown every second
+            // Countdown tick every second
             setInterval(() => {
               if (this.schedulerCountdown > 0) {
                 this.schedulerCountdown--;
-              } else {
-                // Recalculate when hits 0
-                this.schedulerCountdown = this.calcCountdown();
-                this.refreshStatus();
-                this.fetchCycles();
               }
             }, 1000);
           },
 
           async refreshStatus() {
             try {
-              // 1. Fetch scheduler status
+              // 1. Fetch scheduler status (includes countdown)
               const schedulerResp = await fetch("/api/v1/bot/scheduler/status");
               if (schedulerResp.ok) {
-                const schedulerData = await schedulerResp.json();
-                this.schedulerStatus = schedulerData;
+                const data = await schedulerResp.json();
+                this.schedulerStatus = data;
+                // Use backend's countdown directly
+                if (data.seconds_until_next > 0) {
+                  this.schedulerCountdown = data.seconds_until_next;
+                }
               }
 
               // 2. Fetch dashboard status
