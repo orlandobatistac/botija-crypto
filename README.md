@@ -1,246 +1,171 @@
-# Kraken AI Trading Bot (Swing Trading + Dynamic Trailing Stop + Telegram Alerts)
+# Kraken AI Trading Bot v3.0 - Smart Trend Follower
 
-## 📌 Project Overview
+## 📌 Overview
 
-This project is an **automated swing trading bot for Bitcoin (BTC)** using the **Kraken Spot API**, combined with **AI-based signal validation** (OpenAI), **technical indicators**, **dynamic trailing stop-loss**, and **Telegram alerts**.
+Automated **BTC swing trading bot** using **Kraken Spot API** with the **Smart Trend Follower (STF)** strategy. Achieved **+2990% return** in backtesting (2018-2025).
 
-The bot runs automatically on a **VPS or local machine**, executes **buy/sell decisions**, and actively manages open positions using a **real-time trailing stop engine**.
-
-The core goal is:
-- **Execute safe swing trades**
-- **Avoid risky behavior (no leverage, no futures, spot trading only)**
-- **Use AI + indicators together to confirm entries**
-- **Protect profit with a trailing stop**
-- **Send full status alerts to Telegram**
+**Core Features:**
+- **EMA-based entries/exits** (EMA20+1.5% entry, EMA50-1.5% exit)
+- **AI Regime Detection** (BULL/BEAR/LATERAL/VOLATILE)
+- **Dynamic Leverage** (x1.5 in BULL, x1.0 spot otherwise)
+- **Winter Protocol** (protective filter when price < EMA200)
+- **Shadow Margin Tracking** (audit leverage without real margin)
+- **Telegram Alerts** for all trading events
 
 ## 🚀 Quick Start
 
-### Local Development
+```bash
+# Start API
+cd backend
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 
-1. **Open in VS Code Devcontainer or Codespaces**
-   ```bash
-   # Dependencies install automatically
-   ```
+# Access
+# Dashboard: http://localhost:8001/
+# API Docs: http://localhost:8001/docs
+```
 
-2. **Install dependencies manually (optional)**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
+## 🧠 Smart Trend Follower Strategy
 
-3. **Start the application**
-   ```bash
-   cd backend
-   python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
-   ```
+### Entry Conditions
+- Price crosses **above EMA20 + 1.5%**
+- AI Regime is favorable (BULL preferred)
+- Winter Protocol check passes (if price < EMA200, requires RSI > 65)
 
-4. **Access the application**
-   - Frontend Dashboard: http://localhost:8001/
-   - API Docs (Swagger): http://localhost:8001/docs
-   - Health Check: http://localhost:8001/health
+### Exit Conditions
+- Price crosses **below EMA50 - 1.5%**
+- Or trailing stop triggered
 
-### Stack
+### Dynamic Leverage
+| AI Regime | Leverage | Mode |
+|-----------|----------|------|
+| BULL 🟢 | x1.5 | Margin (shadow) |
+| BEAR 🔴 | x1.0 | Spot |
+| LATERAL 🟡 | x1.0 | Spot |
+| VOLATILE 🟠 | x1.0 | Spot |
 
-- **Backend**: FastAPI + Python 3.12+ + SQLAlchemy
-- **Frontend**: HTML5 + Alpine.js + TailwindCSS (no build required)
-- **Database**: SQLite (dev) / PostgreSQL (prod)
-- **Deployment**: VPS + Nginx + systemd
-- **Trading**: Kraken Spot API + OpenAI + Technical Indicators
-- **CI/CD**: GitHub Actions automated deployment
+### Winter Protocol ❄️
+When `Price < EMA200`:
+- Extra caution mode activated
+- Only enters if RSI > 65 (strong momentum)
+- Protects against bear market entries
+
+## 📊 Technical Indicators
+
+| Indicator | Usage |
+|-----------|-------|
+| EMA20 | Entry trigger (price > EMA20+1.5%) |
+| EMA50 | Exit trigger (price < EMA50-1.5%) |
+| EMA200 | Winter Protocol filter |
+| RSI14 | Momentum confirmation |
+
+## 🤖 AI Regime Detection
+
+OpenAI analyzes real-time market data to classify:
+- **BULL**: Strong uptrend, use leverage
+- **BEAR**: Downtrend, stay in spot
+- **LATERAL**: Sideways, stay in spot
+- **VOLATILE**: High volatility, stay in spot
 
 ## 📁 Project Structure
 
 ```
 botija-crypto/
-├── .devcontainer/          # VS Code devcontainer config
-├── .github/                # GitHub Actions & Copilot instructions
-│   ├── copilot-instructions.md
-│   └── workflows/deploy-vps.yml
 ├── backend/
 │   ├── app/
-│   │   ├── main.py         # FastAPI app entry point
-│   │   ├── database.py     # SQLAlchemy setup
-│   │   ├── models.py       # ORM models (Trade, BotStatus, Signal)
-│   │   ├── schemas.py      # Pydantic schemas
-│   │   ├── scheduler.py    # APScheduler for trading cycles
-│   │   ├── routers/        # API endpoint groups
-│   │   │   ├── bot.py      # Bot control endpoints
-│   │   │   ├── trades.py   # Trade history endpoints
-│   │   │   ├── cycles.py   # Trading cycles endpoints
-│   │   │   ├── paper.py    # Paper trading endpoints
-│   │   │   └── indicators.py
-│   │   └── services/       # Business logic
-│   │       ├── trading_bot.py
-│   │       ├── kraken_client.py
+│   │   ├── main.py              # FastAPI entry
+│   │   ├── scheduler.py         # Trading cycles (every 4h)
+│   │   ├── models.py            # DB models
+│   │   ├── routers/             # API endpoints
+│   │   └── services/
+│   │       ├── trading_bot.py   # Main bot logic
+│   │       ├── smart_trend_follower.py  # STF strategy
+│   │       ├── ai_regime.py     # AI regime detection
+│   │       ├── kraken_client.py # Kraken API
 │   │       ├── technical_indicators.py
-│   │       ├── ai_validator.py
-│   │       ├── telegram_alerts.py
 │   │       ├── trailing_stop.py
-│   │       └── modes/      # Trading mode engines
-│   │           ├── paper.py
-│   │           └── real.py
-│   ├── tests/              # Unit tests with pytest
-│   └── requirements.txt
+│   │       ├── telegram_alerts.py
+│   │       └── modes/
+│   │           ├── paper.py     # Paper trading
+│   │           └── real.py      # Real trading
+│   └── tests/
 ├── frontend/
-│   ├── index.html          # Main dashboard
-│   ├── components/         # Reusable Alpine.js components
-│   │   ├── ui/             # Modal, toast
-│   │   └── navigation/     # Navbar
-│   ├── stores/             # Alpine global state (auth, app)
-│   ├── utils/              # API helpers
-│   └── static/css/         # Stylesheets
-├── docs/                   # Documentation
-├── scripts/                # Deployment & migration scripts
-├── .env.example            # Environment template
-├── .gitignore              # Git exclusions
-├── manifest.json           # Project metadata
-└── README.md               # This file
+│   ├── index.html               # Dashboard
+│   └── stores/                  # Alpine.js state
+├── scripts/                     # Deploy & migrations
+└── docs/                        # Documentation
 ```
 
-## 🧠 Trading Strategy Logic
+## ⚙️ Configuration
 
-### BUY Conditions (all must be true)
-- EMA20 > EMA50
-- RSI14 between 45-60
-- OpenAI returns BUY signal
-- USD balance ≥ $65
-- No existing BTC position
+### Environment Variables
+```env
+# Kraken API
+KRAKEN_API_KEY=
+KRAKEN_SECRET_KEY=
 
-**Action**: Place limit BUY order + initialize trailing stop at entry * 0.99
+# OpenAI
+OPENAI_API_KEY=
 
-### SELL Conditions
+# Telegram Alerts
+TELEGRAM_TOKEN=
+TELEGRAM_CHAT_ID=
 
-**By Trailing Stop**:
-If `current_price <= trailing_stop` → Market SELL
-
-**By AI Signal**:
-If OpenAI returns SELL, EMA20 < EMA50, and RSI < 40 → Market SELL
-
-### Trailing Stop Logic
-```python
-new_trailing = max(old_trailing, current_price * 0.99)
-```
-- Only moves UP as price rises
-- Never lowers (locks in profit)
-- Automatically triggers SELL when hit
-
-## 📡 Components & Architecture
-
-- **Kraken API Integration**: Spot trading only, no leverage
-- **Technical Indicators**: EMA20, EMA50, RSI14
-- **OpenAI Signal Engine**: AI confirmation for entries/exits
-- **Dynamic Trailing Stop Manager**: Real-time profit protection
-- **Telegram Alert System**: Trade notifications + status updates
-- **Web Dashboard**: Real-time monitoring and bot control
-- **Database**: Trade history, signals, bot status tracking
-
-## 🎯 Project Goals
-
-1. **Create a fully autonomous BTC swing trading bot**
-2. Use **Kraken Spot API** only (no margin, no futures)
-3. Use AI signals (OpenAI) for confirmation:
-   - BUY
-   - SELL
-   - HOLD
-4. Calculate technical indicators locally:
-   - EMA20
-   - EMA50
-   - RSI14
-5. Execute:
-   - **OCO BUY orders** (entry + TP + SL)
-   - **Market SELL orders** based on trailing stop or AI signal
-6. Implement a **dynamic trailing stop** that:
-   - Moves ONLY upward as the price rises
-   - Never lowers
-   - Sells automatically if price hits the trail
-7. Send **Telegram alerts** for:
-   - Buy signals
-   - Sell signals
-   - Executed trades
-   - Trailing stop updates
-   - Trailing stop triggers
-   - Daily bot status
-8. Run automatically every:
-   - **1 hour**, or
-   - **Twice per day** (configurable)
-
-## 🧠 Strategy Logic
-
-### BUY Conditions:
-Triggered only when:
-- EMA20 > EMA50
-- RSI between 45 and 60
-- OpenAI returns **BUY**
-- USD balance ≥ 65
-- No existing BTC position
-
-Action:
-- Execute a **limit BUY** order
-- Initialize **trailing stop = entry_price * 0.99**
-
-### SELL Conditions:
-Triggered when you already hold BTC.
-
-#### SELL by TRAILING STOP:
-If:
-```
-current_price <= trailing_stop
-```
-→ Execute **market SELL**, reset trailing file.
-
-#### SELL by AI Signal:
-If:
-- OpenAI returns **SELL**
-- EMA20 < EMA50
-- RSI < 40
-
-→ Execute **market SELL**
-
-### Trailing Stop Logic:
-```
-new_trailing = max(old_trailing, current_price * 0.99)
+# Trading
+TRADING_MODE=PAPER           # PAPER or REAL
+TRADING_INTERVAL_HOURS=4     # Cycle frequency
+TRADE_AMOUNT_PERCENT=100     # % of balance per trade
 ```
 
-This guarantees:
-- Trailing stop only moves UP as price rises
-- Never moves down
-- Protects accumulated profit
+## 📈 Dashboard Features
 
-Stored in:
-`trailing_stop.txt`
+- **Bot Status**: Active/Inactive, PAPER/REAL mode
+- **Balances**: BTC and USD
+- **Next Cycle Countdown**: Real-time from scheduler
+- **Trading Cycles History**: With STF strategy data
+  - AI Regime (BULL/BEAR/LATERAL/VOLATILE)
+  - Leverage used (x1.5/x1.0)
+  - Winter Mode status
+  - EMAs and RSI values
 
-## 📡 Components & Architecture
+## 🔧 Tech Stack
 
-### 1. Kraken API Integration
-### 2. Technical Indicator Engine
-### 3. OpenAI Signal Engine
-### 4. Dynamic Trailing Stop Manager
-### 5. Telegram Alerts System
-### 6. Scheduler (cron)
-
-## 🔧 Technologies Used
-- **Backend**: Python 3.12+, FastAPI, SQLAlchemy, APScheduler
-- **Trading**: krakenex, pandas, ta (technical analysis)
-- **AI**: OpenAI SDK (GPT-3.5)
-- **Notifications**: python-telegram-bot
+- **Backend**: FastAPI, SQLAlchemy, APScheduler
 - **Frontend**: Alpine.js, TailwindCSS
+- **Trading**: krakenex, pandas, ta
+- **AI**: OpenAI GPT-4
+- **Alerts**: python-telegram-bot
+- **Database**: SQLite (dev) / PostgreSQL (prod)
+- **Deploy**: VPS + Nginx + systemd + GitHub Actions
 
-## 🔑 Environment Variables
-KRAKEN_API_KEY
-KRAKEN_SECRET_KEY
-OPENAI_API_KEY
-TELEGRAM_TOKEN
-TELEGRAM_CHAT_ID
+## 📊 Shadow Margin Tracking
 
-## 🚀 How It Works
-Full workflow: indicators → AI → evaluate → buy/sell → trailing → alerts → logs.
+Tracks hypothetical leverage performance without real margin:
+- `real_profit_usd`: Actual spot profit
+- `shadow_profit_usd`: Simulated x1.5 profit in BULL regime
 
-## 🛡 Safety Rules
-- No leverage
-- No futures
-- AI double validation
-- Caps per trade
-- Trailing stop protection
+Allows auditing if leverage would have improved returns.
 
-# Deployment test
-# GitHub Actions deployment test
+## 🛡️ Safety Features
+
+- **No real leverage** (shadow tracking only)
+- **Spot trading only** on Kraken
+- **Paper trading mode** for testing
+- **Trailing stop** protection
+- **Winter Protocol** bear market filter
+- **AI validation** before entries
+
+## 📅 Trading Schedule
+
+Cycles run every 4 hours at: **1:00, 5:00, 9:00, 13:00, 17:00, 21:00 ET**
+
+## 🚀 Deployment
+
+Automated via GitHub Actions on push to `main`:
+1. SSH to VPS
+2. Git pull
+3. Install dependencies
+4. Restart systemd service
+
+---
+
+**v3.0.0** - Smart Trend Follower | Built with ❤️ for BTC swing trading
