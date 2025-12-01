@@ -132,7 +132,7 @@
               <button
                 @click="runManualCycle()"
                 :disabled="manualCycleRunning"
-                :class="manualCycleRunning ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                :class="manualCycleRunning ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'"
                 class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
               >
                 <span x-show="!manualCycleRunning">▶ Run</span>
@@ -146,7 +146,7 @@
               </button>
               <button
                 @click="fetchCycles()"
-                class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-sm transition-colors"
+                class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm transition-colors"
               >
                 🔄
               </button>
