@@ -190,15 +190,15 @@
                         <!-- AI Regime -->
                         <div class="flex items-center gap-1">
                           <span
-                            class="px-2 py-0.5 rounded text-xs font-bold"
+                            class="px-2 py-0.5 rounded text-xs font-bold border"
                             :class="{
-                              'bg-green-600 text-white': cycle.ai_regime === 'BULL',
-                              'bg-red-600 text-white': cycle.ai_regime === 'BEAR',
-                              'bg-yellow-600 text-white': cycle.ai_regime === 'LATERAL',
-                              'bg-orange-600 text-white': cycle.ai_regime === 'VOLATILE',
-                              'bg-gray-600 text-gray-200': !cycle.ai_regime
+                              'bg-emerald-900/30 text-emerald-400 border-emerald-800/50': cycle.ai_regime === 'BULL',
+                              'bg-red-900/30 text-red-400 border-red-800/50': cycle.ai_regime === 'BEAR',
+                              'bg-gray-700 text-gray-300 border-gray-600': cycle.ai_regime === 'LATERAL',
+                              'bg-amber-900/30 text-amber-400 border-amber-800/50': cycle.ai_regime === 'VOLATILE',
+                              'bg-gray-700 text-gray-400 border-gray-600': !cycle.ai_regime
                             }"
-                            x-text="cycle.ai_regime ? (cycle.ai_regime === 'BULL' ? '🟢 BULL' : cycle.ai_regime === 'BEAR' ? '🔴 BEAR' : cycle.ai_regime === 'LATERAL' ? '🟡 LATERAL' : '🟠 VOLATILE') : 'N/A'"
+                            x-text="cycle.ai_regime || 'N/A'"
                           ></span>
                         </div>
                         <!-- Leverage -->
@@ -242,11 +242,11 @@
                     <td class="px-3 py-3">
                       <div class="flex items-center gap-2">
                         <span
-                          class="px-2 py-1 rounded text-xs font-semibold"
+                          class="px-2 py-1 rounded text-xs font-semibold border"
                           :class="{
-                                                    'bg-green-600': cycle.ai_signal === 'BUY',
-                                                    'bg-red-600': cycle.ai_signal === 'SELL',
-                                                    'bg-gray-600': cycle.ai_signal === 'HOLD'
+                                                    'bg-emerald-900/30 text-emerald-400 border-emerald-800/50': cycle.ai_signal === 'BUY',
+                                                    'bg-red-900/30 text-red-400 border-red-800/50': cycle.ai_signal === 'SELL',
+                                                    'bg-gray-700 text-gray-300 border-gray-600': cycle.ai_signal === 'HOLD'
                                                 }"
                           x-text="cycle.ai_signal"
                         >
@@ -265,12 +265,12 @@
                     </td>
                     <td class="px-3 py-3">
                       <span
-                        class="px-2 py-1 rounded text-xs font-bold"
+                        class="px-2 py-1 rounded text-xs font-bold border"
                         :class="{
-                                                'bg-green-600': cycle.action === 'BOUGHT',
-                                                'bg-red-600': cycle.action === 'SOLD',
-                                                'bg-yellow-600': cycle.action === 'HOLD',
-                                                'bg-red-800': cycle.action === 'ERROR' || cycle.action.includes('FAILED')
+                                                'bg-emerald-900/30 text-emerald-400 border-emerald-800/50': cycle.action === 'BOUGHT',
+                                                'bg-red-900/30 text-red-400 border-red-800/50': cycle.action === 'SOLD',
+                                                'bg-gray-700 text-gray-300 border-gray-600': cycle.action === 'HOLD',
+                                                'bg-red-900/50 text-red-400 border-red-700': cycle.action === 'ERROR' || cycle.action.includes('FAILED')
                                             }"
                         x-text="cycle.action"
                       >
@@ -370,17 +370,17 @@
 
         <!-- Recent Trades -->
         <div
-          class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-orange-700/50 p-6 mb-6 shadow-lg"
+          class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 p-6 mb-6 shadow-lg"
         >
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold flex items-center gap-2">
-              <span>💰</span> Recent Trades
+              <i class="fa-solid fa-coins text-gray-500"></i> Recent Trades
             </h2>
             <button
               @click="refreshStatus()"
-              class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+              class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-gray-600"
             >
-              🔄 Refresh
+              <i class="fa-solid fa-rotate mr-1"></i>Refresh
             </button>
           </div>
           <div x-show="trades.length > 0" class="overflow-x-auto">
@@ -472,7 +472,7 @@
         >
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold flex items-center gap-2">
-              <span>📝</span> Application Logs
+              <i class="fa-solid fa-terminal text-gray-500"></i> Application Logs
             </h2>
             <div class="flex gap-2">
               <select
@@ -487,16 +487,16 @@
               </select>
               <button
                 @click="fetchLogs()"
-                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-gray-600"
               >
-                🔄 Refresh
+                <i class="fa-solid fa-rotate mr-1"></i>Refresh
               </button>
               <a
                 href="/api/v1/bot/logs/download"
                 download="botija.log"
-                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors inline-block"
+                class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-gray-600 inline-block"
               >
-                📥 Download
+                <i class="fa-solid fa-download mr-1"></i>Download
               </a>
             </div>
           </div>
