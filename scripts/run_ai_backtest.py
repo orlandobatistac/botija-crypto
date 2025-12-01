@@ -1,12 +1,18 @@
 """
-Backtest con parámetros AI dinámicos vs Buy & Hold
-VERSION AUDITADA - Smart Trend Following (IA + EMA50)
+Backtest SINCRONIZADO con trading_bot.py
+VERSION FINAL - Smart Trend Following + Winter Protocol
 
-Correcciones aplicadas:
-1. Timing: Señal en Close[T], ejecución en Close[T] con slippage 0.1%
-2. Comisiones: 0.1% por operación (Binance estándar)
-3. Lógica EMA50: Jerarquía correcta de decisiones
-4. Debug: Prints detallados para semanas clave
+Reglas Hardcoded (Backtest +2990%):
+1. Winter Protocol: Close < EMA200 -> Solo BUY si IA==BULL Y RSI>65
+2. Smart Entry (NO winter):
+   - BULL/VOLATILE: Close > EMA20 * 1.015
+   - LATERAL: Close > EMA50 * 1.015
+   - BEAR: NO entries
+3. Smart Exit: Close < EMA50 * 0.985
+   - Exception: BULL holds unless catastrophic (3% below EMA50)
+4. Shadow Margin: x1.5 for BULL, x1.0 for others (tracking only)
+
+Comisiones: 0.1% | Slippage: 0.1%
 """
 import sqlite3
 import pandas as pd
@@ -141,10 +147,11 @@ def get_regime_params(date):
             'capital_percent': 75, 'stop_loss_percent': 2.0}
 
 # ============================================================
-# 4. BACKTEST AUDITADO
+# 4. BACKTEST SINCRONIZADO CON trading_bot.py
 # ============================================================
-print("\n🔄 Ejecutando backtest AUDITADO...")
+print("\n🔄 Ejecutando backtest SINCRONIZADO...")
 
+# Capital con leverage (shadow margin)
 initial_capital = 1000
 capital = initial_capital
 btc_holdings = 0
@@ -152,6 +159,14 @@ position = None
 trades = []
 equity_curve = []
 total_commissions = 0
+
+# Capital SPOT only (para comparación)
+capital_spot = initial_capital
+btc_holdings_spot = 0
+position_spot = None
+trades_spot = []
+equity_curve_spot = []
+total_commissions_spot = 0
 debug_logs = []
 
 for i in range(len(df)):
@@ -177,36 +192,59 @@ for i in range(len(df)):
         should_buy = False
         buy_reason = ""
 
-        ema20_upper = ema20 * (1 + BUFFER)  # EMA20 + 1.5% (Fast Entry)
+        # Thresholds sincronizados con trading_bot.py
+        ema20_entry = ema20 * (1 + BUFFER)  # EMA20 + 1.5% for BULL/VOLATILE
+        ema50_entry = ema50 * (1 + BUFFER)  # EMA50 + 1.5% for LATERAL
         ema200 = float(row['ema200'])
         rsi = float(row['rsi'])
 
-        # PROTOCOLO DE INVIERNO: Detectar Bear Market Macro
+        # PROTOCOLO DE INVIERNO: Close < EMA200
         is_crypto_winter = close_price < ema200
 
         if is_crypto_winter:
-            # EN INVIERNO: Solo compramos si la IA dice BULL + RSI > 65 (momentum fuerte)
-            # RSI 50-65 en invierno = rebote técnico falso, no comprar
+            # ❄️ WINTER MODE: Solo BUY si IA==BULL Y RSI>65
             if regime == 'BULL' and rsi > 65:
-                should_buy = True
-                buy_reason = f"❄️ Invierno + BULL + RSI {rsi:.0f}>65 | Precio ${close_price:,.0f} < EMA200 ${ema200:,.0f}"
+                # Aún en winter, verificar threshold de entrada
+                if close_price > ema20_entry:
+                    should_buy = True
+                    buy_reason = f"❄️ Winter + BULL + RSI {rsi:.0f}>65 | Price > EMA20+1.5%"
+                else:
+                    buy_reason = f"❄️ Winter + BULL + RSI OK but Price < EMA20+1.5%"
             else:
-                should_buy = False  # CASH - IA dice Bull pero momentum insuficiente
-                # No hay buy_reason porque no compramos
+                # Winter blocks: wrong regime or low RSI
+                buy_reason = f"❄️ Winter BLOCKED | Regime: {regime} | RSI: {rsi:.0f}"
         else:
-            # NO ES INVIERNO (Precio > EMA200): Lógica normal
-            is_bullish_ai = (regime == 'BULL')
-            is_technical_recovery = (regime != 'BEAR') and (close_price > ema20_upper)
+            # ☀️ NORMAL MODE (NO winter)
+            if regime == 'BULL':
+                # BULL: Entry on EMA20 + 1.5%
+                if close_price > ema20_entry:
+                    should_buy = True
+                    buy_reason = f"☀️ BULL | Price ${close_price:,.0f} > EMA20+1.5%"
+                else:
+                    buy_reason = f"☀️ BULL but Price < EMA20+1.5%"
 
-            if is_bullish_ai:
-                should_buy = True
-                buy_reason = "Régimen BULL (Modo Euforia)"
-            elif is_technical_recovery:
-                should_buy = True
-                buy_reason = f"Fast Entry: {regime} + Precio ${close_price:,.0f} > EMA20+1.5% ${ema20_upper:,.0f}"
+            elif regime == 'VOLATILE':
+                # VOLATILE: Same as BULL (EMA20 + 1.5%)
+                if close_price > ema20_entry:
+                    should_buy = True
+                    buy_reason = f"☀️ VOLATILE | Price ${close_price:,.0f} > EMA20+1.5%"
+                else:
+                    buy_reason = f"☀️ VOLATILE but Price < EMA20+1.5%"
+
+            elif regime == 'LATERAL':
+                # LATERAL: Entry on EMA50 + 1.5% (más conservador)
+                if close_price > ema50_entry:
+                    should_buy = True
+                    buy_reason = f"☀️ LATERAL | Price ${close_price:,.0f} > EMA50+1.5%"
+                else:
+                    buy_reason = f"☀️ LATERAL but Price < EMA50+1.5%"
+
+            else:  # BEAR
+                # BEAR: NO ENTRIES (capital protection)
+                buy_reason = f"☀️ BEAR | NO ENTRIES ALLOWED"
 
         if should_buy and capital > 10:
-            # DYNAMIC LEVERAGE: Solo apalancamiento en BULL
+            # DYNAMIC LEVERAGE: Solo apalancamiento en BULL (Shadow Margin)
             if regime == 'BULL':
                 current_leverage = LEVERAGE  # x1.5 en Euforia
             else:
@@ -229,6 +267,20 @@ for i in range(len(df)):
                 'leverage_used': current_leverage
             }
 
+            # SPOT TRACKING (sin leverage) para comparación
+            if position_spot is None and capital_spot > 10:
+                spot_commission = capital_spot * COMMISSION
+                spot_invest = capital_spot - spot_commission
+                btc_holdings_spot = spot_invest / exec_price
+                total_commissions_spot += spot_commission
+                capital_spot = 0
+                position_spot = {
+                    'entry_price': exec_price,
+                    'entry_date': date,
+                    'regime': regime,
+                    'btc': btc_holdings_spot
+                }
+
             if is_debug_date:
                 lev_str = f"x{current_leverage}" if current_leverage > 1 else "Spot"
                 debug_logs.append(
@@ -241,28 +293,28 @@ for i in range(len(df)):
         should_sell = False
         sell_reason = ""
 
-        # JERARQUÍA DE DECISIONES - LÓGICA SIMPLIFICADA FINAL
-        # Evaluamos régimen ACTUAL (no el de entrada)
+        # Exit thresholds sincronizados con trading_bot.py
+        ema50_exit = ema50 * (1 - BUFFER)      # EMA50 - 1.5%
+        catastrophic_exit = ema50 * 0.97       # 3% below EMA50
 
-        # 1. ¿Qué dice la IA HOY?
-        if regime == 'BULL':
-            # MODO EUFORIA: HOLD siempre
-            # Ignoramos si el precio rompe EMA momentáneamente (Bear Trap)
-            should_sell = False
-            sell_reason = f"HOLD - IA dice BULL (Modo Euforia)"
-
-        # 2. Si la IA NO dice BULL (BEAR, VOLATILE o LATERAL):
-        else:
-            ema50_lower = ema50 * (1 - BUFFER)  # EMA50 - 1.5%
-            # ¿Qué dice el Gráfico HOY? (con buffer de histéresis)
-            if close_price < ema50_lower:
-                # IA no es optimista Y perdimos soporte con fuerza = VENDER
-                should_sell = True
-                sell_reason = f"VENTA - {regime} + Precio ${close_price:,.0f} < EMA50-1.5% ${ema50_lower:,.0f}"
+        # SMART EXIT LOGIC
+        if close_price < ema50_exit:
+            # Price broke below EMA50-1.5%
+            if regime == 'BULL':
+                # BULL Exception: Only sell on catastrophic drop (3% below)
+                if close_price < catastrophic_exit:
+                    should_sell = True
+                    sell_reason = f"🔴 BULL CATASTROPHIC | Price < EMA50-3%"
+                else:
+                    should_sell = False
+                    sell_reason = f"🟡 BULL HOLD | Price < EMA50-1.5% but not catastrophic"
             else:
-                # IA duda pero no rompimos soporte con fuerza = HOLD
-                should_sell = False
-                sell_reason = f"HOLD - {regime} pero Precio > EMA50-1.5% (buffer aguanta)"
+                # Non-BULL: Sell on EMA50-1.5% break
+                should_sell = True
+                sell_reason = f"🔴 EXIT {regime} | Price ${close_price:,.0f} < EMA50-1.5%"
+        else:
+            should_sell = False
+            sell_reason = f"🟢 HOLD | Price >= EMA50-1.5%"
 
         # Debug log para fechas clave
         if is_debug_date:
@@ -308,6 +360,24 @@ for i in range(len(df)):
             btc_holdings = 0
             position = None
 
+            # SPOT SELL (mismo timing)
+            if position_spot is not None:
+                spot_gross = btc_holdings_spot * exec_price
+                spot_commission = spot_gross * COMMISSION
+                total_commissions_spot += spot_commission
+                spot_profit_pct = (exec_price - position_spot['entry_price']) / position_spot['entry_price'] * 100
+                capital_spot = spot_gross - spot_commission
+                trades_spot.append({
+                    'entry_date': position_spot['entry_date'],
+                    'exit_date': date,
+                    'entry_price': position_spot['entry_price'],
+                    'exit_price': exec_price,
+                    'profit_pct': spot_profit_pct,
+                    'regime': position_spot['regime']
+                })
+                btc_holdings_spot = 0
+                position_spot = None
+
     # Equity curve (considerando deuda si hay posición abierta)
     if position is not None:
         # Valor neto = valor BTC - préstamo pendiente - intereses acumulados
@@ -323,6 +393,13 @@ for i in range(len(df)):
     else:
         total_value = capital
     equity_curve.append(total_value)
+
+    # SPOT Equity curve
+    if position_spot is not None:
+        spot_value = btc_holdings_spot * close_price
+    else:
+        spot_value = capital_spot
+    equity_curve_spot.append(spot_value)
 
 # Cerrar posición final (si existe)
 if position is not None:
@@ -353,14 +430,43 @@ if position is not None:
         'interest_paid': interest_cost
     })
 
+# Cerrar posición SPOT final (si existe)
+if position_spot is not None:
+    final_date = df.index[-1]
+    final_price = float(df.iloc[-1]['Close']) * (1 - SLIPPAGE)
+    spot_gross = btc_holdings_spot * final_price
+    spot_commission = spot_gross * COMMISSION
+    total_commissions_spot += spot_commission
+    capital_spot = spot_gross - spot_commission
+    spot_profit_pct = (final_price - position_spot['entry_price']) / position_spot['entry_price'] * 100
+    trades_spot.append({
+        'entry_date': position_spot['entry_date'],
+        'exit_date': final_date,
+        'entry_price': position_spot['entry_price'],
+        'exit_price': final_price,
+        'profit_pct': spot_profit_pct,
+        'regime': position_spot['regime']
+    })
+
+# Resultados Shadow Margin (con leverage)
 ai_final = capital
 ai_return = (ai_final - initial_capital) / initial_capital * 100
 
-# Max drawdown
+# Resultados SPOT (sin leverage)
+spot_final = capital_spot
+spot_return = (spot_final - initial_capital) / initial_capital * 100
+
+# Max drawdown (Shadow)
 equity_curve = np.array(equity_curve)
 peak = np.maximum.accumulate(equity_curve)
 drawdown = (peak - equity_curve) / peak * 100
 ai_max_dd = np.max(drawdown)
+
+# Max drawdown (SPOT)
+equity_curve_spot = np.array(equity_curve_spot)
+peak_spot = np.maximum.accumulate(equity_curve_spot)
+drawdown_spot = (peak_spot - equity_curve_spot) / peak_spot * 100
+spot_max_dd = np.max(drawdown_spot)
 
 win_rate = sum(1 for t in trades if t['profit_pct'] > 0) / len(trades) * 100 if trades else 0
 
@@ -368,7 +474,7 @@ win_rate = sum(1 for t in trades if t['profit_pct'] > 0) / len(trades) * 100 if 
 # DETALLE DE TRADES
 # ============================================================
 print("\n" + "=" * 100)
-print("📋 DETALLE DE TODOS LOS TRADES")
+print("📋 DETALLE DE TODOS LOS TRADES (Shadow Margin)")
 print("=" * 100)
 print(f"{'#':<3} {'Entrada':<12} {'Salida':<12} {'Régimen':<10} {'Lever':<6} {'P.Entrada':>12} {'P.Salida':>12} {'Profit %':>10} {'Interés':>10}")
 print("-" * 100)
@@ -516,11 +622,11 @@ if DEBUG_MODE and debug_logs:
 # ============================================================
 # 7. RESULTADOS FINALES
 # ============================================================
-print("\n" + "=" * 70)
+print("\n" + "=" * 80)
 print("📊 RESULTADOS FINALES (CON COMISIONES)")
-print("=" * 70)
+print("=" * 80)
 
-print(f"\n🤖 ESTRATEGIA AI (Smart Trend Following):")
+print(f"\n🚀 SHADOW MARGIN (x1.5 en BULL):")
 print(f"   Capital final:   ${ai_final:,.2f}")
 print(f"   Retorno total:   {ai_return:+.1f}%")
 print(f"   Max Drawdown:    {ai_max_dd:.1f}%")
@@ -528,29 +634,38 @@ print(f"   Trades:          {len(trades)}")
 print(f"   Win Rate:        {win_rate:.1f}%")
 print(f"   Comisiones:      ${total_commissions:.2f}")
 
+print(f"\n💰 SPOT PURO (x1.0 siempre):")
+print(f"   Capital final:   ${spot_final:,.2f}")
+print(f"   Retorno total:   {spot_return:+.1f}%")
+print(f"   Max Drawdown:    {spot_max_dd:.1f}%")
+print(f"   Trades:          {len(trades_spot)}")
+print(f"   Comisiones:      ${total_commissions_spot:.2f}")
+
 print(f"\n📈 BUY & HOLD:")
 print(f"   Capital final:   ${bh_final:,.2f}")
 print(f"   Retorno total:   {bh_return:+.1f}%")
 print(f"   Max Drawdown:    {bh_max_dd:.1f}%")
 
-print("\n" + "=" * 70)
-print("📋 TABLA COMPARATIVA FINAL")
-print("=" * 70)
-print(f"\n{'Métrica':<20} {'AI Bot':>15} {'Buy & Hold':>15} {'Diferencia':>15}")
-print("-" * 65)
-print(f"{'Retorno Total':<20} {ai_return:>+14.1f}% {bh_return:>+14.1f}% {ai_return - bh_return:>+14.1f}%")
-print(f"{'Max Drawdown':<20} {ai_max_dd:>14.1f}% {bh_max_dd:>14.1f}% {bh_max_dd - ai_max_dd:>+14.1f}%")
-print(f"{'Trades':<20} {len(trades):>15} {'1':>15} {len(trades)-1:>+15}")
-print(f"{'Capital Final':<20} ${ai_final:>13,.0f} ${bh_final:>13,.0f} ${ai_final-bh_final:>+13,.0f}")
+print("\n" + "=" * 80)
+print("📋 TABLA COMPARATIVA DEFINITIVA")
+print("=" * 80)
+print(f"\n{'Métrica':<20} {'Shadow (x1.5)':>15} {'SPOT (x1.0)':>15} {'Buy & Hold':>15}")
+print("-" * 80)
+print(f"{'Retorno Total':<20} {ai_return:>+14.1f}% {spot_return:>+14.1f}% {bh_return:>+14.1f}%")
+print(f"{'Max Drawdown':<20} {ai_max_dd:>14.1f}% {spot_max_dd:>14.1f}% {bh_max_dd:>14.1f}%")
+print(f"{'Trades':<20} {len(trades):>15} {len(trades_spot):>15} {'1':>15}")
+print(f"{'Capital Final':<20} ${ai_final:>13,.0f} ${spot_final:>13,.0f} ${bh_final:>13,.0f}")
 
-print("\n" + "-" * 65)
-diff = ai_return - bh_return
+print("\n" + "-" * 80)
+print("📊 DIFERENCIA vs BUY & HOLD:")
+print(f"   Shadow Margin: {ai_return - bh_return:+.1f}% | Spot: {spot_return - bh_return:+.1f}%")
+
+diff = spot_return - bh_return  # Comparamos SPOT (operación real) vs B&H
 if diff > 0:
-    print(f"✅ AI GANA POR {diff:+.1f}% con {bh_max_dd - ai_max_dd:.1f}% MENOS RIESGO")
-elif ai_max_dd < bh_max_dd * 0.7:  # Si DD es 30% menor, considerar victoria
-    print(f"🟡 B&H gana en retorno ({-diff:.1f}%) pero AI tiene {bh_max_dd - ai_max_dd:.1f}% MENOS DRAWDOWN")
+    print(f"\n✅ SPOT SUPERA B&H por {diff:+.1f}%")
+    print(f"   Shadow Margin potencial: {ai_return:+.1f}% (auditoría)")
 else:
-    print(f"❌ BUY & HOLD GANA POR {-diff:.1f}%")
+    print(f"\n❌ B&H supera SPOT por {-diff:.1f}%")
 
 # ============================================================
 # 8. ANÁLISIS POR RÉGIMEN
