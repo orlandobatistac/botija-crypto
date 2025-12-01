@@ -748,28 +748,17 @@
             });
           },
 
-          // Calculate seconds until next scheduled run (1, 5, 9, 13, 17, 21 ET)
+          // Calculate seconds until next 4-hour mark (1, 5, 9, 13, 17, 21 ET)
           calcCountdown() {
-            const scheduleHours = [1, 5, 9, 13, 17, 21];
             const now = new Date();
-            // Convert to ET
-            const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-            const currentHour = etTime.getHours();
-            const currentMin = etTime.getMinutes();
-            const currentSec = etTime.getSeconds();
+            const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+            const h = et.getHours();
+            const m = et.getMinutes();
+            const s = et.getSeconds();
             
-            // Find next schedule hour
-            let nextHour = scheduleHours.find(h => h > currentHour);
-            let daysToAdd = 0;
-            if (!nextHour) {
-              nextHour = scheduleHours[0]; // Tomorrow's first
-              daysToAdd = 1;
-            }
-            
-            // Calculate seconds until next run
-            const hoursUntil = (nextHour - currentHour + (daysToAdd * 24));
-            const secondsUntil = (hoursUntil * 3600) - (currentMin * 60) - currentSec;
-            return Math.max(0, secondsUntil);
+            // Next schedule hour: 1, 5, 9, 13, 17, 21 (every 4h starting at 1)
+            const next = h < 1 ? 1 : h < 5 ? 5 : h < 9 ? 9 : h < 13 ? 13 : h < 17 ? 17 : h < 21 ? 21 : 25;
+            return (next - h) * 3600 - m * 60 - s;
           },
 
           // Format USD currency with $ and commas
@@ -815,7 +804,7 @@
           async init() {
             // Calculate initial countdown
             this.schedulerCountdown = this.calcCountdown();
-            
+
             // Wait for initial status to load
             await this.refreshStatus();
             await this.fetchLogs();
