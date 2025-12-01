@@ -778,8 +778,9 @@
 
               if (result.success) {
                 console.log("✅ Manual cycle completed:", result);
-                // Refresh dashboard after cycle
+                // Refresh dashboard and cycles table after cycle
                 await this.refreshStatus();
+                await this.fetchCycles();
               } else {
                 console.error("❌ Manual cycle failed:", result.message);
               }

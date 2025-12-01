@@ -33,7 +33,7 @@ def get_trading_bot() -> TradingBot:
         kraken_key = os.getenv('KRAKEN_API_KEY', '')
         kraken_secret = os.getenv('KRAKEN_SECRET_KEY', '')
         is_paper_mode = not (kraken_key and kraken_secret)
-        
+
         trading_bot = TradingBot(
             kraken_api_key=kraken_key,
             kraken_secret=kraken_secret,
