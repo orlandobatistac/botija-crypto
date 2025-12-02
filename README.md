@@ -65,12 +65,16 @@ When `Price < EMA200`:
 
 ## 📊 Technical Indicators
 
-| Indicator | Usage |
-|-----------|-------|
-| EMA20 | Entry trigger (BULL/VOLATILE) |
-| EMA50 | Entry (LATERAL) + Exit trigger |
-| EMA200 | Winter Protocol filter |
-| RSI14 | Winter momentum confirmation |
+**Architecture:** Daily Levels / 4H Execution
+- Indicators calculated on **DAILY candles** (stronger S/R levels)
+- Bot executes every **4 hours** comparing current price vs daily levels
+
+| Indicator | Timeframe | Usage |
+|-----------|-----------|-------|
+| EMA20 | Daily | Entry trigger (BULL) |
+| EMA50 | Daily | Entry (LATERAL) + Exit trigger |
+| EMA200 | Daily | Winter Protocol filter |
+| RSI14 | Daily | Winter momentum confirmation |
 
 ## 🤖 AI Regime Detection
 

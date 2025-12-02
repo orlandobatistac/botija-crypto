@@ -20,6 +20,47 @@ The Smart Trend Follower (STF) is a swing trading strategy optimized for Bitcoin
 
 **Key Insight:** The Null Hypothesis "failure" reveals that the **EMA50 exit logic is the true edge**, not the AI regime detection. The strategy profits even with random regime assignments because the technical backbone (EMA50 exit + Winter Protocol) is inherently robust. The AI provides consistency and narrative value, but the core alpha comes from the exit logic.
 
+## Live Bot Architecture: Daily Levels / 4H Execution
+
+### Why This Architecture?
+
+The backtest that generated +2412% used **daily candles** for indicator calculation. To replicate this exact behavior in production, we implemented the "Daily Levels / 4H Execution" architecture:
+
+**Problem Solved:**
+- Kraken API limits historical data to ~720 candles per timeframe
+- 720 x 4H candles = only 120 days (insufficient for EMA200)
+- 720 x 1D candles = 720 days (~2 years, plenty for EMA200)
+
+**Solution:**
+```
+INDICATORS: Calculated on DAILY candles (1d timeframe)
+  - EMA20, EMA50, EMA200 on daily closes
+  - RSI14 on daily data
+  
+EXECUTION: Bot runs every 4 HOURS
+  - Compares CURRENT price (real-time ticker) vs DAILY levels
+  - Executes immediately when price crosses daily EMA levels
+  - Does NOT wait for daily candle close
+```
+
+**Benefits:**
+1. **Exact Backtest Replication:** Uses the same daily EMA levels that generated +2412%
+2. **Stronger Levels:** Daily EMAs are respected by institutional traders (stronger S/R)
+3. **Fast Reaction:** 4H execution catches intraday crosses of daily levels
+4. **Data Availability:** 720 daily candles = ~2 years of history (sufficient for EMA200)
+
+```python
+# Production Configuration
+OHLC_TIMEFRAME = '1d'    # Daily candles for indicators
+OHLC_LIMIT = 720         # ~2 years of daily data
+
+# Standard periods (NOT scaled)
+EMA_FAST = 20            # EMA20 Daily
+EMA_MEDIUM = 50          # EMA50 Daily
+EMA_SLOW = 200           # EMA200 Daily
+RSI_PERIOD = 14          # RSI14 Daily
+```
+
 ## Strategy Components
 
 ### 1. Entry Signal (Regime-Specific)
@@ -107,17 +148,19 @@ real_leverage = 1.0
 
 ## Technical Indicators
 
-| Indicator | Calculation | Usage |
-|-----------|-------------|-------|
-| EMA20 | 20-period EWM | Entry (BULL/VOLATILE) |
-| EMA50 | 50-period EWM | Entry (LATERAL) + Exit |
-| EMA200 | 200-period EWM | Winter Protocol |
-| RSI14 | 14-period RSI | Winter momentum filter |
+**Architecture:** Daily Levels / 4H Execution
+
+| Indicator | Timeframe | Calculation | Usage |
+|-----------|-----------|-------------|-------|
+| EMA20 | Daily | 20-day EWM | Entry (BULL) |
+| EMA50 | Daily | 50-day EWM | Entry (LATERAL) + Exit |
+| EMA200 | Daily | 200-day EWM | Winter Protocol |
+| RSI14 | Daily | 14-day RSI | Winter momentum filter |
 
 ```python
-# Requires 1000+ candles for accurate EMA200
-OHLC_LIMIT = 1000
-OHLC_TIMEFRAME = '4h'
+# Daily candles for indicator calculation
+OHLC_LIMIT = 720        # ~2 years of daily data
+OHLC_TIMEFRAME = '1d'   # Daily candles
 ```
 
 ## Trading Cycle Flow
@@ -125,16 +168,19 @@ OHLC_TIMEFRAME = '4h'
 ```
 Every 4 hours (0:00, 4:00, 8:00, 12:00, 16:00, 20:00 ET):
 
-1. Fetch 1000 candles from Kraken (CCXT)
-2. Calculate indicators (EMA20, EMA50, EMA200, RSI14)
-3. Get AI regime classification (OpenAI)
-4. Check Winter Protocol status
-5. Evaluate entry/exit with StrategyEngine
-6. Execute trade if signal (paper or real)
-7. Update paper wallet balance
-8. Log cycle to database
-9. Send Telegram alert
+1. Fetch 720 DAILY candles from Kraken (CCXT)
+2. Calculate DAILY indicators (EMA20, EMA50, EMA200, RSI14)
+3. Get CURRENT price from ticker (real-time)
+4. Get AI regime classification (OpenAI)
+5. Check Winter Protocol status (Price vs EMA200 Daily)
+6. Evaluate: Current Price vs Daily EMA levels
+7. Execute trade if signal (paper or real)
+8. Update paper wallet balance
+9. Log cycle to database
+10. Send Telegram alert
 ```
+
+**Key Point:** Indicators use DAILY data, but decision uses CURRENT price. This allows fast reaction to intraday crosses of daily support/resistance levels.
 
 ## Database Schema
 
