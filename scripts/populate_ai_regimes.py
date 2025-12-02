@@ -171,6 +171,16 @@ def get_weeks(start: date, end: date) -> list[date]:
     return weeks
 
 
+def get_days(start: date, end: date) -> list[date]:
+    """Generate list of all dates."""
+    days = []
+    current = start
+    while current <= end:
+        days.append(current)
+        current += timedelta(days=1)
+    return days
+
+
 def fetch_regime_single(week_start: date, market_data: dict) -> dict:
     """Call OpenAI for a single week with real market data."""
 
@@ -180,9 +190,8 @@ def fetch_regime_single(week_start: date, market_data: dict) -> dict:
     )
 
     response = client.chat.completions.create(
-        model="gpt-5.1",
+        model="gpt-5-nano",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
         response_format={"type": "json_object"}
     )
 
@@ -224,7 +233,7 @@ def init_database(db_path: str):
 
     conn.commit()
     conn.close()
-    print("✅ Table ai_market_regimes created")
+    print("✅ Table ai_market_regimes created (daily granularity)")
 
 
 def save_regime(db_path: str, regime: dict) -> bool:
@@ -266,14 +275,14 @@ def save_regime(db_path: str, regime: dict) -> bool:
 
 
 def populate_database():
-    """Populate DB with AI regimes using REAL market data."""
-    start = date(2020, 1, 1)
+    """Populate DB with AI regimes using REAL market data (DAILY granularity)."""
+    start = date(2018, 1, 1)
     end = date(2025, 11, 30)
 
     db_path = Path(__file__).parent.parent / "backend" / "data" / "trading_bot.db"
 
     print("=" * 60)
-    print("🤖 POPULATING DATABASE WITH AI REGIMES (REAL DATA)")
+    print("🤖 POPULATING DATABASE WITH AI REGIMES (DAILY - gpt-5-nano)")
     print("=" * 60)
     print(f"📅 Period: {start} to {end}")
 
@@ -286,54 +295,58 @@ def populate_database():
         print(f"   ❌ Error fetching data: {e}")
         return
 
-    # Generate weeks
-    all_weeks = get_weeks(start, end)
-    print(f"📆 Total weeks: {len(all_weeks)}")
+    # Generate days (not weeks)
+    all_days = get_days(start, end)
+    print(f"📆 Total days: {len(all_days)}")
 
     # Initialize DB
     init_database(str(db_path))
 
-    # Process each week individually with real data
+    # Process each day individually with real data
     all_regimes = []
     total_tokens = 0
     regime_counts = {"BULL": 0, "BEAR": 0, "LATERAL": 0, "VOLATILE": 0}
 
-    for i, week_start in enumerate(all_weeks):
-        print(f"\n🔄 Week {i+1}/{len(all_weeks)}: {week_start}", end=" ")
+    for i, day in enumerate(all_days):
+        # Progress every 50 days
+        if i % 50 == 0:
+            print(f"\n📅 Progress: {i}/{len(all_days)} days ({i*100//len(all_days)}%)")
 
         try:
-            # Get real market data for this week
-            market_data = get_week_data(btc_data, week_start)
+            # Get real market data for this day
+            market_data = get_week_data(btc_data, day)
 
             if market_data is None:
-                print("⚠️ No data available")
                 continue
 
             # Call OpenAI with real data
-            regime, tokens = fetch_regime_single(week_start, market_data)
+            regime, tokens = fetch_regime_single(day, market_data)
             total_tokens += tokens
 
-            # Save to DB
+            # Save to DB (reusing week_start field for date)
+            regime['week_start'] = day.isoformat()
             if save_regime(str(db_path), regime):
                 all_regimes.append(regime)
                 r = regime.get("regime", "UNKNOWN")
                 regime_counts[r] = regime_counts.get(r, 0) + 1
-                print(f"→ {r} (${market_data['price']:,.0f}, RSI:{market_data['rsi']:.0f}) [{tokens} tokens]")
-            else:
-                print("⚠️ Failed to save")
+
+            # Print every 100 days
+            if i % 100 == 0:
+                print(f"   {day}: {r} (${market_data['price']:,.0f}) [{tokens} tok]")
 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            if i % 100 == 0:
+                print(f"   {day}: ❌ {e}")
 
-        # Rate limiting - small delay between calls
-        if i < len(all_weeks) - 1:
-            time.sleep(0.5)
+        # Rate limiting - minimal delay for nano model
+        if i < len(all_days) - 1:
+            time.sleep(0.1)
 
-    # Calculate cost (gpt-5.1: $2/1M input, $8/1M output)
-    estimated_cost = (total_tokens / 1_000_000) * 5  # Average $5/1M
+    # Calculate cost (gpt-5-nano: $0.025/1M input, $0.20/1M output)
+    estimated_cost = (total_tokens / 1_000_000) * 0.15  # Average ~$0.15/1M
 
     print("\n" + "=" * 60)
-    print(f"✅ COMPLETED: {len(all_regimes)} weeks processed")
+    print(f"✅ COMPLETED: {len(all_regimes)} days processed")
     print(f"💰 Total tokens: {total_tokens:,} (~${estimated_cost:.2f})")
     print(f"📁 Database: {db_path}")
     print("=" * 60)
@@ -342,7 +355,7 @@ def populate_database():
     print("\n📊 Regime distribution:")
     for regime, count in sorted(regime_counts.items()):
         pct = (count / len(all_regimes) * 100) if all_regimes else 0
-        print(f"   {regime}: {count} weeks ({pct:.1f}%)")
+        print(f"   {regime}: {count} days ({pct:.1f}%)")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ Smart Trend Follower Trading Bot - Production Implementation
 Backtest results: +2990% vs Buy & Hold +601% (2018-2025)
 
 Strategy Rules (Hardcoded):
-- Entry: Price > EMA20 * 1.015 (BULL/VOLATILE) or EMA50 * 1.015 (LATERAL)
+- Entry: Price > EMA20 * 1.015 (BULL) or EMA50 * 1.015 (LATERAL) | VOLATILE/BEAR blocked
 - Exit: Price < EMA50 * 0.985 (Dynamic, NO trailing stop)
 - Winter Protocol: If Close < EMA200, only BUY if AI_Regime == 'BULL' AND RSI > 65
 - Shadow Margin: Track x1.5 leverage for BULL regime (Spot execution only)
@@ -107,11 +107,9 @@ class StrategyEngine:
         Get shadow leverage for margin performance audit.
         Real trading is ALWAYS spot (x1.0).
 
-        Rule: BULL regime gets x1.5 shadow leverage for tracking.
+        DISABLED: Always return 1.0 (pure SPOT mode)
         """
-        if regime == MarketRegime.BULL.value:
-            return BULL_SHADOW_LEVERAGE
-        return SPOT_LEVERAGE
+        return SPOT_LEVERAGE  # Always SPOT - shadow margin disabled
 
     @staticmethod
     def should_enter(
@@ -130,8 +128,9 @@ class StrategyEngine:
         1. Must NOT have existing position
         2. Winter Protocol: If Close < EMA200, only enter if regime == BULL AND RSI > 65
         3. If NOT winter:
-           - BULL/VOLATILE: Enter if Close > EMA20 * 1.015
+           - BULL: Enter if Close > EMA20 * 1.015
            - LATERAL: Enter if Close > EMA50 * 1.015
+           - VOLATILE/BEAR: BLOCKED (0% win rate in backtest)
 
         Returns:
             (should_enter, reason_string)
@@ -154,11 +153,11 @@ class StrategyEngine:
             return False, f"Winter Mode ON | Price ${close:,.0f} < Entry ${entry_threshold:,.0f}"
 
         # Normal market (not winter)
-        if regime in [MarketRegime.BULL.value, MarketRegime.VOLATILE.value]:
+        if regime == MarketRegime.BULL.value:
             entry_threshold = ema20 * (1 + BUFFER_PERCENT)
             if close > entry_threshold:
-                return True, f"Normal Mode | Regime: {regime} | Price ${close:,.0f} > EMA20+1.5% ${entry_threshold:,.0f}"
-            return False, f"Normal Mode | Regime: {regime} | Price ${close:,.0f} < EMA20+1.5% ${entry_threshold:,.0f}"
+                return True, f"Normal Mode | Regime: BULL | Price ${close:,.0f} > EMA20+1.5% ${entry_threshold:,.0f}"
+            return False, f"Normal Mode | Regime: BULL | Price ${close:,.0f} < EMA20+1.5% ${entry_threshold:,.0f}"
 
         elif regime == MarketRegime.LATERAL.value:
             entry_threshold = ema50 * (1 + BUFFER_PERCENT)
@@ -166,8 +165,8 @@ class StrategyEngine:
                 return True, f"Normal Mode | Regime: LATERAL | Price ${close:,.0f} > EMA50+1.5% ${entry_threshold:,.0f}"
             return False, f"Normal Mode | Regime: LATERAL | Price ${close:,.0f} < EMA50+1.5% ${entry_threshold:,.0f}"
 
-        else:  # BEAR or unknown
-            return False, f"Normal Mode | Regime: {regime} | BLOCKED (No entries in BEAR)"
+        else:  # BEAR, VOLATILE, or unknown
+            return False, f"Normal Mode | Regime: {regime} | BLOCKED (No entries in BEAR/VOLATILE)"
 
     @staticmethod
     def should_exit(

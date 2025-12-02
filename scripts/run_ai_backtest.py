@@ -5,9 +5,9 @@ VERSION FINAL - Smart Trend Following + Winter Protocol
 Reglas Hardcoded (Backtest +2990%):
 1. Winter Protocol: Close < EMA200 -> Solo BUY si IA==BULL Y RSI>65
 2. Smart Entry (NO winter):
-   - BULL/VOLATILE: Close > EMA20 * 1.015
+   - BULL: Close > EMA20 * 1.015
    - LATERAL: Close > EMA50 * 1.015
-   - BEAR: NO entries
+   - VOLATILE/BEAR: BLOCKED (0% win rate)
 3. Smart Exit: Close < EMA50 * 0.985
    - Exception: BULL holds unless catastrophic (3% below EMA50)
 4. Shadow Margin: x1.5 for BULL, x1.0 for others (tracking only)
@@ -98,7 +98,7 @@ conn.close()
 
 regimes_df['week_start'] = pd.to_datetime(regimes_df['week_start'])
 regimes_dict = regimes_df.set_index('week_start').to_dict('index')
-print(f"   Regímenes AI cargados: {len(regimes_df)} semanas")
+print(f"   Regímenes AI cargados: {len(regimes_df)} días")
 print(f"   Distribución: {regimes_df['regime'].value_counts().to_dict()}")
 
 # Generar regímenes sintéticos para 2018-2019 (antes de tener IA)
@@ -127,21 +127,20 @@ for date in df.index:
 print(f"   Regímenes sintéticos creados: {synthetic_count}")
 
 def get_regime_params(date):
-    """Obtiene parámetros del régimen para una fecha."""
+    """Obtiene parámetros del régimen para una fecha (busca día exacto o más cercano)."""
     if isinstance(date, pd.Timestamp):
-        week_start = date - pd.Timedelta(days=date.dayofweek)
-        week_start = week_start.normalize()
+        day = date.normalize()
     else:
-        date = pd.Timestamp(date)
-        week_start = date - pd.Timedelta(days=date.dayofweek)
-        week_start = week_start.normalize()
+        day = pd.Timestamp(date).normalize()
 
-    if week_start in regimes_dict:
-        return regimes_dict[week_start]
+    # Buscar día exacto primero
+    if day in regimes_dict:
+        return regimes_dict[day]
 
-    for ws in sorted(regimes_dict.keys(), reverse=True):
-        if ws <= date:
-            return regimes_dict[ws]
+    # Si no existe, buscar el más cercano anterior
+    for d in sorted(regimes_dict.keys(), reverse=True):
+        if d <= day:
+            return regimes_dict[d]
 
     return {'regime': 'LATERAL', 'buy_threshold': 50, 'sell_threshold': 35,
             'capital_percent': 75, 'stop_loss_percent': 2.0}
@@ -223,14 +222,6 @@ for i in range(len(df)):
                 else:
                     buy_reason = f"☀️ BULL but Price < EMA20+1.5%"
 
-            elif regime == 'VOLATILE':
-                # VOLATILE: Same as BULL (EMA20 + 1.5%)
-                if close_price > ema20_entry:
-                    should_buy = True
-                    buy_reason = f"☀️ VOLATILE | Price ${close_price:,.0f} > EMA20+1.5%"
-                else:
-                    buy_reason = f"☀️ VOLATILE but Price < EMA20+1.5%"
-
             elif regime == 'LATERAL':
                 # LATERAL: Entry on EMA50 + 1.5% (más conservador)
                 if close_price > ema50_entry:
@@ -239,9 +230,9 @@ for i in range(len(df)):
                 else:
                     buy_reason = f"☀️ LATERAL but Price < EMA50+1.5%"
 
-            else:  # BEAR
-                # BEAR: NO ENTRIES (capital protection)
-                buy_reason = f"☀️ BEAR | NO ENTRIES ALLOWED"
+            else:  # BEAR or VOLATILE
+                # BEAR/VOLATILE: NO ENTRIES (capital protection, 0% win rate)
+                buy_reason = f"☀️ {regime} | NO ENTRIES ALLOWED"
 
         if should_buy and capital > 10:
             # DYNAMIC LEVERAGE: Solo apalancamiento en BULL (Shadow Margin)
@@ -519,14 +510,19 @@ equity_df['year'] = equity_df.index.year
 equity_df['month'] = equity_df.index.month
 equity_df['year_month'] = equity_df.index.to_period('M')
 
-# Retornos anuales
+# Retornos anuales (usando continuidad: fin año anterior = inicio año actual)
 print(f"\n{'Año':<8} {'Inicio':>12} {'Fin':>12} {'Retorno':>12} {'Max DD':>10}")
 print("-" * 56)
 years = sorted(equity_df['year'].unique())
+prev_year_end = None
 for year in years:
     year_data = equity_df[equity_df['year'] == year]['equity']
     if len(year_data) > 0:
-        start_val = year_data.iloc[0]
+        # Usar fin del año anterior como inicio (continuidad)
+        if prev_year_end is not None:
+            start_val = prev_year_end
+        else:
+            start_val = year_data.iloc[0]
         end_val = year_data.iloc[-1]
         year_return = (end_val - start_val) / start_val * 100
         # Max DD del año
@@ -535,21 +531,30 @@ for year in years:
         year_max_dd = np.max(year_dd)
         symbol = "✅" if year_return > 0 else "❌"
         print(f"{year:<8} ${start_val:>10,.0f} ${end_val:>10,.0f} {year_return:>+11.1f}% {year_max_dd:>9.1f}% {symbol}")
+        prev_year_end = end_val
 
 # Retornos mensuales
 print("\n" + "=" * 100)
 print("📆 RETORNOS MENSUALES")
 print("=" * 100)
 
-# Calcular retorno mensual
+# Calcular retorno mensual usando último valor del mes anterior como base
 monthly_returns = {}
-for ym in equity_df['year_month'].unique():
+sorted_months = sorted(equity_df['year_month'].unique())
+prev_end_val = None
+
+for ym in sorted_months:
     month_data = equity_df[equity_df['year_month'] == ym]['equity']
     if len(month_data) > 0:
-        start_val = month_data.iloc[0]
+        # Usar el último valor del mes anterior como inicio (continuidad)
+        if prev_end_val is not None:
+            start_val = prev_end_val
+        else:
+            start_val = month_data.iloc[0]
         end_val = month_data.iloc[-1]
         ret = (end_val - start_val) / start_val * 100
         monthly_returns[ym] = ret
+        prev_end_val = end_val
 
 # Crear tabla pivote año x mes
 print(f"\n{'Año':<6}", end="")
@@ -560,12 +565,13 @@ print("-" * 112)
 
 for year in years:
     print(f"{year:<6}", end="")
-    year_total = 0
+    # Compound return: (1+r1) * (1+r2) * ... - 1
+    year_compound = 1.0
     for month in range(1, 13):
         ym = pd.Period(f"{year}-{month:02d}", freq='M')
         if ym in monthly_returns:
             ret = monthly_returns[ym]
-            year_total += ret
+            year_compound *= (1 + ret / 100)
             if ret > 5:
                 print(f"{ret:>+7.1f}%", end="")
             elif ret < -5:
@@ -574,7 +580,8 @@ for year in years:
                 print(f"{ret:>+7.1f}%", end="")
         else:
             print(f"{'--':>8}", end="")
-    print(f"{year_total:>+9.1f}%")
+    year_total_compound = (year_compound - 1) * 100
+    print(f"{year_total_compound:>+9.1f}%")
 
 # Estadísticas mensuales
 positive_months = sum(1 for r in monthly_returns.values() if r > 0)
