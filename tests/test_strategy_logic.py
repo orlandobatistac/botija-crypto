@@ -114,16 +114,17 @@ class TestShadowMargin:
     Test 2: Shadow Margin Tracking
 
     Verifies that:
-    - BULL regime gets shadow_leverage = 1.5
-    - Other regimes get shadow_leverage = 1.0
+    - Shadow Margin is DISABLED (always returns 1.0)
+    - All regimes get shadow_leverage = 1.0 (pure SPOT)
     - Real execution is always spot (x1.0)
     """
 
     def test_bull_gets_shadow_leverage_1_5(self):
-        """BULL regime should return x1.5 shadow leverage"""
+        """Shadow margin is DISABLED - BULL should return 1.0 (pure SPOT)"""
         leverage = StrategyEngine.get_shadow_leverage(MarketRegime.BULL.value)
-        assert leverage == BULL_SHADOW_LEVERAGE, f"BULL should get {BULL_SHADOW_LEVERAGE}x"
-        assert leverage == 1.5
+        # Shadow margin disabled - always SPOT
+        assert leverage == SPOT_LEVERAGE, "Shadow margin disabled - should be SPOT (1.0x)"
+        assert leverage == 1.0
 
     def test_non_bull_gets_spot_leverage(self):
         """Non-BULL regimes should return x1.0 (spot)"""
@@ -133,7 +134,7 @@ class TestShadowMargin:
             assert leverage == 1.0
 
     def test_trading_signal_includes_shadow_leverage(self):
-        """Full trading signal should include shadow_leverage field"""
+        """Full trading signal should include shadow_leverage field (always 1.0 - disabled)"""
         # Generate enough price data for indicators
         closes = list(range(1000, 1500))  # 500 prices
 
@@ -144,7 +145,8 @@ class TestShadowMargin:
         )
 
         assert 'shadow_leverage' in signal, "Signal must include shadow_leverage"
-        assert signal['shadow_leverage'] == 1.5, "BULL signal should have 1.5x shadow"
+        # Shadow margin disabled - always 1.0
+        assert signal['shadow_leverage'] == 1.0, "Shadow margin disabled - should be 1.0x"
 
     def test_shadow_leverage_in_signal_for_lateral(self):
         """LATERAL regime signal should have 1.0x shadow leverage"""
