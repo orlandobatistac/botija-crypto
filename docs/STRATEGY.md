@@ -36,7 +36,7 @@ The backtest that generated +2412% used **daily candles** for indicator calculat
 INDICATORS: Calculated on DAILY candles (1d timeframe)
   - EMA20, EMA50, EMA200 on daily closes
   - RSI14 on daily data
-  
+
 EXECUTION: Bot runs every 4 HOURS
   - Compares CURRENT price (real-time ticker) vs DAILY levels
   - Executes immediately when price crosses daily EMA levels
