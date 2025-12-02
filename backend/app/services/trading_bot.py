@@ -2,16 +2,15 @@
 Smart Trend Follower Trading Bot - Production Implementation
 Backtest results: +2412% vs Buy & Hold +601% (2018-2025)
 
-Strategy Rules (Hardcoded - SCALED x6 for 4H timeframe to match Daily backtest):
-- Entry: Price > EMA120 * 1.015 (BULL) or EMA300 * 1.015 (LATERAL) | VOLATILE/BEAR blocked
-- Exit: Price < EMA300 * 0.985 (Dynamic, NO trailing stop)
-- Winter Protocol: If Close < EMA1200, only BUY if AI_Regime == 'BULL' AND RSI > 65
-- RSI 14: Kept standard for local overbought/oversold detection
+Architecture: "Daily Levels / 4H Execution"
+- INDICATORS: Calculated on DAILY candles (EMA20, EMA50, EMA200, RSI14)
+- EXECUTION: Bot runs every 4 hours, compares CURRENT PRICE vs DAILY levels
+- This replicates the exact backtest logic that generated +2412%
 
-NOTE: EMA periods scaled x6 (6 candles of 4H = 1 day) to replicate Daily backtest behavior
-  - EMA20 Daily -> EMA120 (4H)
-  - EMA50 Daily -> EMA300 (4H)
-  - EMA200 Daily -> EMA1200 (4H)
+Strategy Rules:
+- Entry: Price > EMA20 * 1.015 (BULL) or EMA50 * 1.015 (LATERAL) | VOLATILE/BEAR blocked
+- Exit: Price < EMA50 * 0.985 (Dynamic, NO trailing stop)
+- Winter Protocol: If Close < EMA200, only BUY if AI_Regime == 'BULL' AND RSI > 65
 
 Uses CCXT for Kraken API (portability).
 """
@@ -31,21 +30,22 @@ import time
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# STRATEGY CONSTANTS (Hardcoded from winning backtest - SCALED x6 for 4H)
+# STRATEGY CONSTANTS (Hardcoded from winning backtest)
+# Architecture: Daily Levels / 4H Execution
 # ============================================================================
 BUFFER_PERCENT = 0.015          # 1.5% hysteresis buffer
 BULL_SHADOW_LEVERAGE = 1.5      # Shadow leverage for BULL regime audit
 SPOT_LEVERAGE = 1.0             # Real execution is always spot
 RSI_WINTER_THRESHOLD = 65       # RSI minimum for winter buys
-RSI_PERIOD = 14                 # RSI period (kept standard for local detection)
+RSI_PERIOD = 14                 # RSI period (standard)
 
-# EMA periods scaled x6 (6 candles of 4H = 1 day) to match Daily backtest
-EMA_FAST = 120                  # EMA20 Daily -> EMA120 (4H)
-EMA_MEDIUM = 300                # EMA50 Daily -> EMA300 (4H)
-EMA_SLOW = 1200                 # EMA200 Daily -> EMA1200 (4H)
+# Standard EMA periods on DAILY candles (exact backtest configuration)
+EMA_FAST = 20                   # EMA20 Daily
+EMA_MEDIUM = 50                 # EMA50 Daily
+EMA_SLOW = 200                  # EMA200 Daily (Winter Protocol)
 
-OHLC_LIMIT = 2000               # Candles to fetch (need 1200+ for EMA1200)
-OHLC_TIMEFRAME = '4h'           # 4-hour candles
+OHLC_LIMIT = 720                # Daily candles (720 days = ~2 years history)
+OHLC_TIMEFRAME = '1d'           # DAILY candles for indicators
 
 
 class TradingSignal(str, Enum):
@@ -75,28 +75,27 @@ class StrategyEngine:
     @staticmethod
     def calculate_indicators(closes: pd.Series) -> Dict[str, float]:
         """
-        Calculate all required technical indicators.
+        Calculate all required technical indicators on DAILY data.
 
-        NOTE: EMA periods are scaled x6 to match Daily backtest behavior:
-        - EMA120 (4H) = EMA20 (Daily)
-        - EMA300 (4H) = EMA50 (Daily)
-        - EMA1200 (4H) = EMA200 (Daily)
+        Architecture: Daily Levels / 4H Execution
+        - Indicators calculated on daily candles
+        - Standard periods: EMA20, EMA50, EMA200, RSI14
 
         Args:
-            closes: Series of closing prices (need 1200+ for EMA1200)
+            closes: Series of DAILY closing prices (need 200+ for EMA200)
 
         Returns:
-            Dict with ema120, ema300, ema1200, rsi14 (named as ema20/50/200 for compatibility)
+            Dict with ema20, ema50, ema200, rsi14
         """
         if len(closes) < EMA_SLOW:
             logger.warning(f"Insufficient data for EMA{EMA_SLOW}: {len(closes)} candles (need {EMA_SLOW}+)")
 
-        # Scaled EMAs (x6 for 4H timeframe)
-        ema_fast = closes.ewm(span=EMA_FAST, adjust=False).mean().iloc[-1]
-        ema_medium = closes.ewm(span=EMA_MEDIUM, adjust=False).mean().iloc[-1]
-        ema_slow = closes.ewm(span=EMA_SLOW, adjust=False).mean().iloc[-1] if len(closes) >= EMA_SLOW else closes.mean()
+        # Standard EMAs on daily data
+        ema20 = closes.ewm(span=EMA_FAST, adjust=False).mean().iloc[-1]
+        ema50 = closes.ewm(span=EMA_MEDIUM, adjust=False).mean().iloc[-1]
+        ema200 = closes.ewm(span=EMA_SLOW, adjust=False).mean().iloc[-1] if len(closes) >= EMA_SLOW else closes.mean()
 
-        # RSI calculation (kept at 14 for local detection)
+        # RSI calculation (standard 14 period)
         delta = closes.diff()
         gain = delta.where(delta > 0, 0).rolling(window=RSI_PERIOD).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=RSI_PERIOD).mean()
@@ -104,11 +103,10 @@ class StrategyEngine:
         rsi_series = 100 - (100 / (1 + rs))
         rsi14 = rsi_series.iloc[-1] if not pd.isna(rsi_series.iloc[-1]) else 50.0
 
-        # Return with legacy names for API compatibility
         return {
-            'ema20': float(ema_fast),    # Actually EMA120 (scaled)
-            'ema50': float(ema_medium),  # Actually EMA300 (scaled)
-            'ema200': float(ema_slow),   # Actually EMA1200 (scaled)
+            'ema20': float(ema20),
+            'ema50': float(ema50),
+            'ema200': float(ema200),
             'rsi14': float(rsi14),
             'close': float(closes.iloc[-1])
         }
@@ -336,76 +334,25 @@ class CCXTKrakenClient:
         limit: int = OHLC_LIMIT
     ) -> list:
         """
-        Get OHLCV data with sufficient history for EMA1200.
-        Uses pagination to overcome Kraken's 720 candle limit.
+        Get OHLCV DAILY data for indicator calculation.
+
+        Architecture: Daily Levels / 4H Execution
+        - Fetches DAILY candles (1d) for EMA20/50/200 calculation
+        - Kraken provides 720 daily candles = ~2 years of history
+        - No pagination needed for daily data
 
         Args:
-            symbol: Trading pair
-            timeframe: Candle timeframe (4h)
-            limit: Number of candles needed (2000 for accurate EMA1200)
+            symbol: Trading pair (BTC/USD)
+            timeframe: Candle timeframe (default: 1d for daily)
+            limit: Number of candles (720 max, enough for EMA200)
 
         Returns:
             List of [timestamp, open, high, low, close, volume]
         """
-        KRAKEN_MAX_CANDLES = 720  # Kraken API limit per request
-
         try:
-            # If we need less than the API limit, simple fetch
-            if limit <= KRAKEN_MAX_CANDLES:
-                ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-                self.logger.info(f"Fetched {len(ohlcv)} candles for {symbol} ({timeframe})")
-                return ohlcv
-
-            # Pagination needed - fetch in batches going backwards
-            self.logger.info(f"Pagination required: fetching {limit} candles ({limit // KRAKEN_MAX_CANDLES + 1} batches)")
-
-            # Calculate timeframe duration in milliseconds
-            timeframe_ms = self.exchange.parse_timeframe(timeframe) * 1000
-            now = self.exchange.milliseconds()
-
-            # Start from the oldest point we need
-            since = now - (timeframe_ms * limit)
-
-            all_candles = []
-            batch_count = 0
-
-            while len(all_candles) < limit:
-                batch_count += 1
-                try:
-                    # Fetch batch starting from 'since'
-                    candles = self.exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=KRAKEN_MAX_CANDLES)
-
-                    if not candles:
-                        self.logger.warning(f"No more candles returned at batch {batch_count}")
-                        break
-
-                    # Filter duplicates if any overlap
-                    if all_candles:
-                        last_time = all_candles[-1][0]
-                        candles = [c for c in candles if c[0] > last_time]
-
-                    if not candles:
-                        break
-
-                    all_candles.extend(candles)
-
-                    # Move since pointer to after last candle
-                    since = candles[-1][0] + 1
-
-                    self.logger.debug(f"Batch {batch_count}: +{len(candles)} candles, total: {len(all_candles)}")
-
-                    # Rate limit protection
-                    time.sleep(0.5)  # 500ms between requests
-
-                except Exception as e:
-                    self.logger.error(f"Error in batch {batch_count}: {e}")
-                    break
-
-            # Return only the requested limit (most recent)
-            result = all_candles[-limit:] if len(all_candles) > limit else all_candles
-            self.logger.info(f"Pagination complete: {len(result)} candles fetched in {batch_count} batches")
-            return result
-
+            ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            self.logger.info(f"Fetched {len(ohlcv)} DAILY candles for {symbol}")
+            return ohlcv
         except Exception as e:
             self.logger.error(f"Error fetching OHLCV: {e}")
             return []
@@ -699,20 +646,27 @@ class TradingBot:
         """
         Analyze current market conditions.
 
+        Architecture: Daily Levels / 4H Execution
+        - Indicators calculated on DAILY candles
+        - Decision based on CURRENT PRICE vs daily levels
+        - Executes immediately when price crosses daily EMA levels
+
         Returns:
             Complete market analysis with trading signal
         """
         try:
-            # Fetch OHLCV data (2000 candles for EMA1200 accuracy - uses pagination)
+            # Fetch DAILY OHLCV data (720 days = ~2 years, enough for EMA200)
             ohlcv = self.client.get_ohlcv(limit=OHLC_LIMIT)
-            if not ohlcv or len(ohlcv) < EMA_MEDIUM:  # Need at least EMA300 worth
-                return {'error': f'Insufficient OHLCV data: {len(ohlcv) if ohlcv else 0} candles (need {EMA_MEDIUM}+)'}
+            if not ohlcv or len(ohlcv) < EMA_SLOW:
+                return {'error': f'Insufficient DAILY data: {len(ohlcv) if ohlcv else 0} candles (need {EMA_SLOW}+ for EMA200)'}
 
-            closes = [candle[4] for candle in ohlcv]  # Close prices
+            closes = [candle[4] for candle in ohlcv]  # Daily close prices
 
-            # Get current ticker
+            # Get CURRENT ticker price (real-time, not daily close)
             ticker = self.client.get_ticker()
             current_price = ticker.get('last', closes[-1])
+
+            self.logger.info(f"Daily Levels: Current price ${current_price:,.0f} vs Daily close ${closes[-1]:,.0f}")
 
             # Get AI regime
             ai_regime_data = self._get_ai_regime()
